@@ -9,7 +9,11 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "KewGameLoader", "KewGameLoa
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "EAGamesNetworkFrameParser", "EAGamesNetworkFrameParser\EAGamesNetworkFrameParser.vcxproj", "{B4D662F0-515C-42DF-88BA-40215977B39A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GamespyMasterServer", "GamespyMasterServer\GamespyMasterServer.csproj", "{CA14FBD3-1D44-44A9-9D23-96E353436F2C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GamespyMasterServer", "GamespyMasterServer\GamespyMasterServer.csproj", "{CA14FBD3-1D44-44A9-9D23-96E353436F2C}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "BungieMicrosoftHaloNetworkFrameParser", "BungieMicrosoftHaloNetworkFrameParser\BungieMicrosoftHaloNetworkFrameParser.vcxproj", "{3BE46128-AF17-40E8-A541-06A31A43519E}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TeaDelKewTests", "TeaDelKewTests\TeaDelKewTests.vcxproj", "{A3EF5782-515B-458E-A98F-23115744293F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -69,6 +73,30 @@ Global
 		{CA14FBD3-1D44-44A9-9D23-96E353436F2C}.Release|x64.Build.0 = Release|Any CPU
 		{CA14FBD3-1D44-44A9-9D23-96E353436F2C}.Release|x86.ActiveCfg = Release|Any CPU
 		{CA14FBD3-1D44-44A9-9D23-96E353436F2C}.Release|x86.Build.0 = Release|Any CPU
+		{3BE46128-AF17-40E8-A541-06A31A43519E}.Debug|Any CPU.ActiveCfg = Debug|x64
+		{3BE46128-AF17-40E8-A541-06A31A43519E}.Debug|Any CPU.Build.0 = Debug|x64
+		{3BE46128-AF17-40E8-A541-06A31A43519E}.Debug|x64.ActiveCfg = Debug|x64
+		{3BE46128-AF17-40E8-A541-06A31A43519E}.Debug|x64.Build.0 = Debug|x64
+		{3BE46128-AF17-40E8-A541-06A31A43519E}.Debug|x86.ActiveCfg = Debug|Win32
+		{3BE46128-AF17-40E8-A541-06A31A43519E}.Debug|x86.Build.0 = Debug|Win32
+		{3BE46128-AF17-40E8-A541-06A31A43519E}.Release|Any CPU.ActiveCfg = Release|x64
+		{3BE46128-AF17-40E8-A541-06A31A43519E}.Release|Any CPU.Build.0 = Release|x64
+		{3BE46128-AF17-40E8-A541-06A31A43519E}.Release|x64.ActiveCfg = Release|x64
+		{3BE46128-AF17-40E8-A541-06A31A43519E}.Release|x64.Build.0 = Release|x64
+		{3BE46128-AF17-40E8-A541-06A31A43519E}.Release|x86.ActiveCfg = Release|Win32
+		{3BE46128-AF17-40E8-A541-06A31A43519E}.Release|x86.Build.0 = Release|Win32
+		{A3EF5782-515B-458E-A98F-23115744293F}.Debug|Any CPU.ActiveCfg = Debug|x64
+		{A3EF5782-515B-458E-A98F-23115744293F}.Debug|Any CPU.Build.0 = Debug|x64
+		{A3EF5782-515B-458E-A98F-23115744293F}.Debug|x64.ActiveCfg = Debug|x64
+		{A3EF5782-515B-458E-A98F-23115744293F}.Debug|x64.Build.0 = Debug|x64
+		{A3EF5782-515B-458E-A98F-23115744293F}.Debug|x86.ActiveCfg = Debug|Win32
+		{A3EF5782-515B-458E-A98F-23115744293F}.Debug|x86.Build.0 = Debug|Win32
+		{A3EF5782-515B-458E-A98F-23115744293F}.Release|Any CPU.ActiveCfg = Release|x64
+		{A3EF5782-515B-458E-A98F-23115744293F}.Release|Any CPU.Build.0 = Release|x64
+		{A3EF5782-515B-458E-A98F-23115744293F}.Release|x64.ActiveCfg = Release|x64
+		{A3EF5782-515B-458E-A98F-23115744293F}.Release|x64.Build.0 = Release|x64
+		{A3EF5782-515B-458E-A98F-23115744293F}.Release|x86.ActiveCfg = Release|Win32
+		{A3EF5782-515B-458E-A98F-23115744293F}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

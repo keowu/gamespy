@@ -41,6 +41,7 @@ namespace GamespyMasterServerTCP {
                 try {
 
                     var clientSocket = await _socket.AcceptAsync();
+                    //Console.WriteLine($"Client connected: {clientSocket.RemoteEndPoint}");
 
                     Task.Run(() => HandleClient(clientSocket));
 

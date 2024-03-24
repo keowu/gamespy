@@ -11,16 +11,6 @@ extern "C" void replaced_read_buffer();
 extern "C" void fake_gamespy_decompress_routine_2();
 
 
-/*
-auto execute_tests() -> void {
-
-    printf("Hello World !!!\n");
-    printf("_______________________DEVELOPMENT TESTS_______________________\n");
-    printf("[OK] Pointer to decrypt frames function: 0x%4X\n", fake_frames_to_decrypt);
-    printf("[OK] Pointer to replace frames function: 0x%4X\n", replaced_read_buffer);
-    printf("_______________________________________________________________\n");
-}*/
-
 auto place_patchs() -> void {
 
     /*
@@ -48,7 +38,7 @@ auto place_patchs() -> void {
 
     /*
         The second patch will replace before the gamespy decompress 2. and will call it from another place and replace the original buffer with
-        by the new master server buffer.
+        by the decrypted buffer.
     */
     unsigned char chSecondPatch[17] = {
         0x60, // pushad
@@ -92,7 +82,6 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 {
     if (g_run) {
 
-        //execute_tests();
         place_patchs();
 
         g_run = FALSE;
