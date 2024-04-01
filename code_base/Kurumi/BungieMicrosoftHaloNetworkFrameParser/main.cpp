@@ -14,5 +14,13 @@ auto main() -> int {
 
     std::cout << haloFrames->operator std::string() << "\n";
 
+    std::cout << "Requester IP: " << haloFrames->getRequesterIp() << "\n";
+
+    haloFrames->setRequesterIp("175.45.176.80");
+
+    std::cout << "Requester IP: " << haloFrames->getRequesterIp() << "\n";
+
+    haloFrames->~HaloCEFrameNetParser();
+
     return 0;
 }

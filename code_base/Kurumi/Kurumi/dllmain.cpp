@@ -1,17 +1,252 @@
-/*
+﻿/*
     (C) Keowu - 2024
 */
 #include <Windows.h>
 #include <iostream>
+#include <list>
+#include "bddisasm/bddisasm.h"
+#include "TeaDelKewAlgo.hh"
 
 static BOOL g_run = TRUE;
+#define DEBUG FALSE //ACTIVATE DEBUG MODE
 
 extern "C" void fake_frames_to_decrypt();
 extern "C" void replaced_read_buffer();
 extern "C" void fake_gamespy_decompress_routine_2();
+extern "C" void set_read_buffer_gs_return(uintptr_t addr);
+extern "C" void set_decrypt_routine_gs_return(uintptr_t addr);
 
 
-auto place_patchs() -> void {
+//TODO: THIS GAMEPACKETS ENCRYPT AND DECRYPT HERE!
+extern "C" void _stdcall game_packets_decrypt(uintptr_t bufferPointer) {
+
+    uint32_t plaintext[2]{ 0x01234567, 0x89abcdef };
+    uint32_t key[4]{ 0x00B0B0CA, 0x00B0B0CA, 0x00B0B0CA, 0x00B0B0CA };
+
+    TeaDelKewAlgo::tea_del_kew_decrypt(plaintext, key);
+
+}
+
+typedef struct BF1942_GS_NETWORK {
+
+    uintptr_t pReadBuffer;
+    uintptr_t pGamespyDecompressRoutine;
+    uintptr_t pSetReadBufferGsReturn;
+    uintptr_t pSetDecryptRoutineGsReturn;
+    char MasterServer[16];
+
+};
+
+auto find_section(const char* chName) -> std::pair<uintptr_t, uintptr_t> {
+    
+    auto imgNtH = reinterpret_cast<PIMAGE_NT_HEADERS>(reinterpret_cast<unsigned char*>(::GetModuleHandle(NULL)) + reinterpret_cast<PIMAGE_DOS_HEADER>(::GetModuleHandle(NULL))->e_lfanew);
+
+    auto sectionHeader = IMAGE_FIRST_SECTION(imgNtH);
+
+    auto textVa = 0, textSize = 0;
+
+    for (auto i = 0; i < imgNtH->FileHeader.NumberOfSections; ++i)
+
+        if (strcmp(reinterpret_cast<char*>(sectionHeader[i].Name), chName) == 0) {
+
+            textVa = imgNtH->OptionalHeader.ImageBase + sectionHeader[i].VirtualAddress;
+            textSize = sectionHeader[i].SizeOfRawData;
+
+            break;
+        }
+
+    return std::make_pair(textVa, textSize);
+}
+
+auto scan_address( BF1942_GS_NETWORK* bf1942 ) -> void {
+
+    /*
+    *   !IMPORTANT@@@@@@@@@@@@@@
+        TODO GET/SET OFFSET FOR 9798B0h and 9798B1h
+    */
+
+    auto textSection = find_section(".text");
+
+    if (textSection.first == 0 && textSection.second == 0) return;
+
+    INSTRUX instructionsToAnalyze[4]{ 0 };
+    
+    unsigned char chBuffer[512]{ 0 };
+
+    for ( auto i = textSection.first; i < textSection.first + textSection.second; i++ ) {
+
+        ::RtlZeroMemory(chBuffer, 512);
+
+        if (!::ReadProcessMemory(
+            
+            ::GetCurrentProcess( ),
+            reinterpret_cast< LPVOID >( i ),
+            chBuffer, 512, NULL
+        
+        )) break;
+
+        auto bdStatus = NdDecodeEx(&*(instructionsToAnalyze + 0), chBuffer, sizeof(chBuffer), ND_CODE_32, ND_DATA_32);
+
+        if (ND_SUCCESS(bdStatus)) {
+
+            NdDecodeEx(&*(instructionsToAnalyze + 1), &*(chBuffer + instructionsToAnalyze[0].Length), sizeof(chBuffer), ND_CODE_32, ND_DATA_32);
+
+            NdDecodeEx(&*(instructionsToAnalyze + 2), &*(chBuffer + instructionsToAnalyze[0].Length + instructionsToAnalyze[1].Length), sizeof(chBuffer), ND_CODE_32, ND_DATA_32);
+
+            bdStatus = NdDecodeEx(&*(instructionsToAnalyze + 3), &*(chBuffer + instructionsToAnalyze[0].Length + instructionsToAnalyze[1].Length + instructionsToAnalyze[2].Length), sizeof(chBuffer), ND_CODE_32, ND_DATA_32);
+
+        }
+
+        if (bf1942->pReadBuffer == 0 && ND_SUCCESS(bdStatus))
+
+            if (instructionsToAnalyze[0].Instruction == ND_INS_MOV
+                && instructionsToAnalyze[0].Operands[0].Type == ND_OP_REG
+                && instructionsToAnalyze[0].Operands[0].Info.Register.Reg == NDR_EAX
+                && instructionsToAnalyze[0].Operands[1].Type == ND_OP_MEM)
+
+                if (instructionsToAnalyze[1].Instruction == ND_INS_PUSH
+                    && instructionsToAnalyze[1].Operands[0].Type == ND_OP_REG
+                    && instructionsToAnalyze[1].Operands[0].Info.Register.Reg == NDR_EBX)
+
+                    if (instructionsToAnalyze[2].Instruction == ND_INS_PUSH
+                        && instructionsToAnalyze[2].Operands[0].Type == ND_OP_REG
+                        && instructionsToAnalyze[2].Operands[0].Info.Register.Reg == NDR_EDI)
+
+                        if (instructionsToAnalyze[3].Instruction == ND_INS_MOV
+                            && instructionsToAnalyze[3].Operands[1].Type == ND_OP_IMM
+                            && instructionsToAnalyze[3].Operands[1].Info.Immediate.Imm == 0x7FF) {
+
+                            bf1942->pReadBuffer = i;
+
+                            continue;
+
+                        }
+
+        if (bf1942->pGamespyDecompressRoutine == 0 && ND_SUCCESS(bdStatus)) 
+
+            if ( instructionsToAnalyze[0].Instruction == ND_INS_SUB
+                && instructionsToAnalyze[0].Operands[0].Type == ND_OP_REG
+                && instructionsToAnalyze[0].Operands[0].Info.Register.Reg == NDR_EAX
+                && instructionsToAnalyze[0].Operands[1].Type == ND_OP_REG
+                && instructionsToAnalyze[0].Operands[1].Info.Register.Reg == NDR_EDI )
+
+                if ( instructionsToAnalyze[1].Instruction == ND_INS_ADD
+                    && instructionsToAnalyze[1].Operands[0].Type == ND_OP_REG
+                    && instructionsToAnalyze[1].Operands[0].Info.Register.Reg == NDR_EAX
+                    && instructionsToAnalyze[1].Operands[1].Type == ND_OP_IMM )
+
+                    if ( instructionsToAnalyze[2].Instruction == ND_INS_PUSH
+                        && instructionsToAnalyze[2].Operands[0].Type == ND_OP_REG
+                        && instructionsToAnalyze[2].Operands[0].Info.Register.Reg == NDR_EAX )
+
+                        if (instructionsToAnalyze[3].Instruction == ND_INS_MOV
+                            && instructionsToAnalyze[3].Operands[0].Type == ND_OP_REG
+                            && instructionsToAnalyze[3].Operands[0].Info.Register.Reg == NDR_EDX
+                            && instructionsToAnalyze[3].Operands[1].Type == ND_OP_REG
+                            && instructionsToAnalyze[3].Operands[1].Info.Register.Reg == NDR_EDI) {
+
+                            bf1942->pGamespyDecompressRoutine = i;
+
+                            continue;
+
+                        }
+
+        if (bf1942->pSetReadBufferGsReturn == 0 && ND_SUCCESS(bdStatus)) 
+
+            if (instructionsToAnalyze[0].Instruction == ND_INS_CALLNR
+                && instructionsToAnalyze[0].Operands[0].Type == ND_OP_OFFS)
+
+                if ( instructionsToAnalyze[1].Instruction == ND_INS_MOV
+                    && instructionsToAnalyze[1].Operands[0].Type == ND_OP_REG
+                    && instructionsToAnalyze[1].Operands[0].Info.Register.Reg == NDR_EDI
+                    && instructionsToAnalyze[1].Operands[1].Type == ND_OP_REG
+                    && instructionsToAnalyze[1].Operands[1].Info.Register.Reg == NDR_EAX )
+
+                    if (instructionsToAnalyze[2].Instruction == ND_INS_OR
+                        && instructionsToAnalyze[2].Operands[1].Type == ND_OP_IMM
+                        && instructionsToAnalyze[2].Operands[1].Info.Immediate.Imm == 0xFFFFFFFFFFFFFFFF)
+
+                        if (instructionsToAnalyze[3].Instruction == ND_INS_CMP) {
+
+                            bf1942->pSetReadBufferGsReturn = i;
+
+                            continue;
+                        }
+
+        if (bf1942->pSetDecryptRoutineGsReturn == 0 && ND_SUCCESS(bdStatus))
+            if ( instructionsToAnalyze[0].Instruction == ND_INS_MOV
+                 && instructionsToAnalyze[0].Operands[0].Type == ND_OP_REG
+                 && instructionsToAnalyze[0].Operands[0].Info.Register.Reg == NDR_EAX
+                 && instructionsToAnalyze[0].Operands[1].Type == ND_OP_MEM)
+
+                if ( instructionsToAnalyze[1].Instruction == ND_INS_CMP
+                    && instructionsToAnalyze[1].Operands[0].Type == ND_OP_MEM
+                    && instructionsToAnalyze[1].Operands[1].Type == ND_OP_REG
+                    && instructionsToAnalyze[1].Operands[1].Info.Register.Reg == NDR_EBX)
+
+                    if ( instructionsToAnalyze[2].Instruction == ND_INS_Jcc
+                        && instructionsToAnalyze[2].Operands[0].Type == ND_OP_OFFS)
+                        if (instructionsToAnalyze[3].Instruction == ND_INS_MOV
+                            && instructionsToAnalyze[3].Operands[0].Type == ND_OP_REG
+                            && instructionsToAnalyze[3].Operands[0].Info.Register.Reg == NDR_ECX
+                            && instructionsToAnalyze[3].Operands[1].Type == ND_OP_REG
+                            && instructionsToAnalyze[3].Operands[1].Info.Register.Reg == NDR_EDI) {
+
+                            bf1942->pSetDecryptRoutineGsReturn = i;
+
+                            continue;
+                        }
+
+
+        if (bf1942->pReadBuffer != 0 && bf1942->pGamespyDecompressRoutine != 0 
+            && bf1942->pSetReadBufferGsReturn != 0 && bf1942->pSetDecryptRoutineGsReturn != 0) break;
+        
+        continue;       
+
+    }
+
+    auto dataSection = find_section(".data");
+
+    if (dataSection.first == 0 && dataSection.second == 0) return;
+
+    const char* chOldEadMasterServer = "master.bf1942.org"; //and master.gamespy.com
+
+    auto iTimes = 0;
+
+    for (auto i = dataSection.first; i < dataSection.first + dataSection.second; i++) {
+
+        if (std::memcmp(
+
+            reinterpret_cast< LPVOID >( i ),
+            chOldEadMasterServer,
+            18
+
+        ) == 0) {
+            ::RtlZeroMemory(
+
+                reinterpret_cast< LPVOID* >( i ),
+                18
+            
+            );
+
+            std::memcpy(
+                
+                reinterpret_cast< LPVOID* >( i ),
+                bf1942->MasterServer,
+                strnlen_s( bf1942->MasterServer, 18 )
+            
+            );
+
+            iTimes++;
+        }
+
+        if ( iTimes == 2 ) break;
+
+    }
+
+}
+
+auto place_patchs(BF1942_GS_NETWORK* bf1942) -> void {
 
     /*
         First patch
@@ -20,27 +255,62 @@ auto place_patchs() -> void {
             and then just read correct data on our buffer and the old one do all decrypt stuff
     */
 
-    uintptr_t uiFirstPatchx = 0x4802B7;
-
-    uintptr_t uiReplacedFirstPatch = reinterpret_cast<uintptr_t>(replaced_read_buffer);
+    uintptr_t uiReplacedFirstPatch = reinterpret_cast< uintptr_t >( replaced_read_buffer );
 
     unsigned char chFirstPatch[29] = {
+
         0x60, // pushad
         0x9C, // pushfd
         0x68, 0x00, 0x00, 0x00, 0x00, // push address_of_replaced_read_buffer
         0xC3, // ret
-        0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90
+        0x90,
+        0x90,
+        0x90,
+        0x90,
+        0x90,
+        0x90,
+        0x90,
+        0x90,
+        0x90,
+        0x90,
+        0x90,
+        0x90,
+        0x90,
+        0x90,
+        0x90,
+        0x90,
+        0x90,
+        0x90,
+        0x90,
+        0x90,
+        0x90
+
     };
 
-    std::memcpy(&*(chFirstPatch + 3), &uiReplacedFirstPatch, sizeof(uintptr_t));
+    std::memcpy(
+        
+        &*(chFirstPatch + 3),
+        &uiReplacedFirstPatch,
+        sizeof(uintptr_t)
+    
+    );
 
-    WriteProcessMemory(GetCurrentProcess(), (void*)0x4802B7, chFirstPatch, 29, NULL);
+    ::WriteProcessMemory(
+    
+        ::GetCurrentProcess( ), 
+        reinterpret_cast< LPVOID >( bf1942->pReadBuffer ),
+        chFirstPatch,
+        29,
+        NULL
+    
+    );
 
     /*
         The second patch will replace before the gamespy decompress 2. and will call it from another place and replace the original buffer with
         by the decrypted buffer.
     */
     unsigned char chSecondPatch[17] = {
+
         0x60, // pushad
         0x9C, // pushfd
         0x68, 0x00, 0x00, 0x00, 0x00, //push address_of_replaced_read_buffer
@@ -54,35 +324,74 @@ auto place_patchs() -> void {
         0x90,
         0x90,
         0x90
+
     };
 
-    uintptr_t uiReplacedSecondPatch = reinterpret_cast<uintptr_t>(fake_gamespy_decompress_routine_2);
+    uintptr_t uiReplacedSecondPatch = reinterpret_cast< uintptr_t >( fake_gamespy_decompress_routine_2 );
 
-    std::memcpy(&*(chSecondPatch + 3), &uiReplacedSecondPatch, sizeof(uintptr_t));
-
-    //VirtualProtect((void*)0x480399, 1024, PAGE_EXECUTE_READWRITE, NULL);
-
-    WriteProcessMemory(GetCurrentProcess(), (void*)0x480399, chSecondPatch, 17, NULL);
-
-    //00957C30
-    //00957DF8
-    //master.bf1942.org
-    //kotori.keowu.re
-    unsigned char ucKew[]{ 0x6B, 0x6F, 0x74, 0x6F, 0x72, 0x69, 0x2E, 0x6B, 0x65, 0x6F, 0x77, 0x75, 0x2E, 0x72, 0x65, 0x00, 0x00 };
-    WriteProcessMemory(GetCurrentProcess(), (void *)0x00957C30, ucKew, 17, NULL);
-    WriteProcessMemory(GetCurrentProcess(), (void*)0x00957DF8, ucKew, 17, NULL);
+    std::memcpy(
+        
+        &*(chSecondPatch + 3),
+        &uiReplacedSecondPatch,
+        sizeof(uintptr_t)
     
+    );
+
+    ::WriteProcessMemory(
+        
+        ::GetCurrentProcess( ),
+        reinterpret_cast<void*>( bf1942->pGamespyDecompressRoutine ),
+        chSecondPatch,
+        17,
+        NULL
+    
+    );
 
 }
 
 BOOL APIENTRY DllMain( HMODULE hModule,
                        DWORD  ul_reason_for_call,
                        LPVOID lpReserved
-                     )
-{
-    if (g_run) {
+                     ) {
 
-        place_patchs();
+    if ( g_run ) {
+
+        ::DisableThreadLibraryCalls(hModule);
+
+        if (DEBUG) {
+         
+            ::AllocConsole();
+
+            ::freopen_s(reinterpret_cast<FILE**>(stdout), "CONOUT$", "w", stdout);
+
+        }
+
+        BF1942_GS_NETWORK* bf1942 = new BF1942_GS_NETWORK{ 0 };
+
+        strcpy_s(bf1942->MasterServer, 18, "kotori.keowu.re");
+        
+        scan_address(bf1942);
+
+        if (bf1942->pReadBuffer == 0 || bf1942->pGamespyDecompressRoutine == 0
+            || bf1942->pSetReadBufferGsReturn == 0 || bf1942->pSetDecryptRoutineGsReturn == 0) {
+
+            ::MessageBox(
+
+                NULL,
+                L"\tᕙ(⇀‸↼‶)ᕗ\nSomething Wrong has been found in this Battlefield 1942!\nPlease contact:\nwww.keowu.re\nwww.github.com/keowu",
+                L"OH NO. PROBLEM",
+                MB_ICONERROR
+
+            );
+
+            ::ExitProcess(-1);
+        }
+
+        set_read_buffer_gs_return(bf1942->pSetReadBufferGsReturn);
+
+        set_decrypt_routine_gs_return(bf1942->pSetDecryptRoutineGsReturn);
+
+        place_patchs(bf1942);
 
         g_run = FALSE;
 

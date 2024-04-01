@@ -166,7 +166,26 @@ extern _memcpy: proc
 						db 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 						db 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 
+		read_buffer_gs_return dd ?
+		decrypt_routine_gs_return dd ?
+
 .code
+
+	_set_decrypt_routine_gs_return proc
+
+		mov eax, dword ptr [esp+4]
+		mov decrypt_routine_gs_return, eax  ; Stack argument One
+
+		ret
+	_set_decrypt_routine_gs_return endp
+
+	_set_read_buffer_gs_return proc
+		
+		mov eax, dword ptr [esp+4]
+		mov read_buffer_gs_return, eax  ; Stack argument One
+
+		ret
+	_set_read_buffer_gs_return endp
 
 	_fake_frames_to_decrypt proc
 
@@ -216,7 +235,7 @@ extern _memcpy: proc
 		push edx             ; buf
 		push eax             ; s
 
-		push 004802D4h ; return to recv
+		push read_buffer_gs_return ; return to recv
 
 		ret
 	_replaced_read_buffer endp
@@ -253,7 +272,7 @@ GameSpyDecrompressSection segment
 		
 		add edi, 5 ; ALIGN THE EA/GAMESPY STRUCT. hehe the nandayo
 
-		push 04803AAh
+		push decrypt_routine_gs_return
 		ret
 
 	_fake_gamespy_decompress_routine_2 endp

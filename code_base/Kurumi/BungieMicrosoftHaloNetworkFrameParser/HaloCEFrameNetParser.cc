@@ -53,7 +53,7 @@ HaloCEFrameNetParser::HaloCEFrameNetParser(std::string& strFilePath) {
 		
 		std::memcpy(newFlag.ucRawFlagBytes, gameFlagsPtr, offset);
 
-		newFlag.uipServersFrameOffset = offset;
+		newFlag.uipServersFrameOffsetSize = offset;
 
 		//skipping the servers block to go to new flags block
 		while (true) {
@@ -114,6 +114,63 @@ HaloCEFrameNetParser::operator std::string() const {
 	}
 
 	return out;
+}
+
+auto HaloCEFrameNetParser::getRequesterIp() -> std::string {
+
+	char chRequesterIp[64]{ 0 };
+
+	sprintf_s(chRequesterIp, "%d.%d.%d.%d\n", this->m_requesterIP & 0xff, (this->m_requesterIP >> 8) & 0xff, (this->m_requesterIP >> 16) & 0xff, (this->m_requesterIP >> 24) & 0xff);
+
+	return std::string(chRequesterIp);
+}
+
+auto HaloCEFrameNetParser::setRequesterIp(const char* chIpv4) -> void {
+
+	int b1{ 0 }, b2{ 0 }, b3{ 0 }, b4{ 0 }, port{ 0 };
+
+	sscanf_s(chIpv4, "%d.%d.%d.%d", &b1, &b2, &b3, &b4);
+
+	this->m_requesterIP = (b4 << 24) |
+		(b3 << 16) |
+		(b2 << 8) |
+		b1;
+
+	std::printf("[OK] The requester IP Address has been changed\n");
+
+}
+
+auto HaloCEFrameNetParser::addServer(const char* chIpv4, const char* chPort) -> void {
+
+	//TODO
+
+}
+
+auto HaloCEFrameNetParser::deleteServer(const char* chIpv4, const char* chPort) -> void {
+
+	//TODO
+
+}
+
+auto HaloCEFrameNetParser::getNewPayload() -> unsigned char* {
+
+	//TODO
+
+	return 0;
+}
+
+auto HaloCEFrameNetParser::getRawPayload() -> unsigned char* {
+
+	//TODO
+
+	return 0;
+}
+
+auto HaloCEFrameNetParser::writeNewPayload(std::string& path) -> bool {
+
+	//TODO
+
+	return false;
 }
 
 HaloCEFrameNetParser::~HaloCEFrameNetParser() {
