@@ -171,6 +171,16 @@ extern _memcpy: proc
 
 .code
 
+	_set_first_magic_byte_addr proc
+
+		mov eax, dword ptr [esp+4]
+		mov old_first_byte_addr, eax  ; Stack argument One
+		inc eax ; Increment 1 to find the frame_buffer pointer that is 1 magic + frame_buffer
+		mov old_frame_buffer, eax ; Mov frame buffer pointer to global.
+
+		ret
+	_set_first_magic_byte_addr endp
+
 	_set_decrypt_routine_gs_return proc
 
 		mov eax, dword ptr [esp+4]

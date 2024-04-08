@@ -3,7 +3,6 @@
 */
 #include <Windows.h>
 #include <iostream>
-#include "pch.h"
 
 static BOOL g_run = TRUE;
 #define DEBUG TRUE //ACTIVATE DEBUG MODE

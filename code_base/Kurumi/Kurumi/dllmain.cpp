@@ -15,6 +15,7 @@ extern "C" void replaced_read_buffer();
 extern "C" void fake_gamespy_decompress_routine_2();
 extern "C" void set_read_buffer_gs_return(uintptr_t addr);
 extern "C" void set_decrypt_routine_gs_return(uintptr_t addr);
+extern "C" void set_first_magic_byte_addr(uintptr_t addr);
 
 
 //TODO: THIS GAMEPACKETS ENCRYPT AND DECRYPT HERE!
@@ -29,6 +30,7 @@ extern "C" void _stdcall game_packets_decrypt(uintptr_t bufferPointer) {
 
 typedef struct BF1942_GS_NETWORK {
 
+    uintptr_t pFirstByteAddrMagicByte;
     uintptr_t pReadBuffer;
     uintptr_t pGamespyDecompressRoutine;
     uintptr_t pSetReadBufferGsReturn;
@@ -59,11 +61,6 @@ auto find_section(const char* chName) -> std::pair<uintptr_t, uintptr_t> {
 }
 
 auto scan_address( BF1942_GS_NETWORK* bf1942 ) -> void {
-
-    /*
-    *   !IMPORTANT@@@@@@@@@@@@@@
-        TODO GET/SET OFFSET FOR 9798B0h and 9798B1h
-    */
 
     auto textSection = find_section(".text");
 
@@ -197,9 +194,27 @@ auto scan_address( BF1942_GS_NETWORK* bf1942 ) -> void {
                             continue;
                         }
 
+        if ( bf1942->pFirstByteAddrMagicByte == 0 && ND_SUCCESS(bdStatus) )
+            if ( instructionsToAnalyze[0].Instruction == ND_INS_MOVSX 
+                && instructionsToAnalyze[0].Operands[1].Type == ND_OP_MEM )
+                if ( instructionsToAnalyze[1].Instruction == ND_INS_XOR
+                    && instructionsToAnalyze[1].Operands[0].Info.Register.Reg == NDR_ECX
+                    && instructionsToAnalyze[1].Operands[1].Type == ND_OP_IMM )
+                    if ( instructionsToAnalyze[2].Instruction == ND_INS_CMP
+                        && instructionsToAnalyze[2].Operands[0].Type == ND_OP_REG
+                        && instructionsToAnalyze[2].Operands[1].Type == ND_OP_REG )
+                        if ( instructionsToAnalyze[3].Instruction == ND_INS_Jcc ) {
+
+                            bf1942->pFirstByteAddrMagicByte = instructionsToAnalyze[0].Operands[1].Info.Memory.Disp;
+
+                            continue;
+                        }
+
+
 
         if (bf1942->pReadBuffer != 0 && bf1942->pGamespyDecompressRoutine != 0 
-            && bf1942->pSetReadBufferGsReturn != 0 && bf1942->pSetDecryptRoutineGsReturn != 0) break;
+            && bf1942->pSetReadBufferGsReturn != 0 && bf1942->pSetDecryptRoutineGsReturn != 0
+            && bf1942->pFirstByteAddrMagicByte != 0) break;
         
         continue;       
 
@@ -373,7 +388,8 @@ BOOL APIENTRY DllMain( HMODULE hModule,
         scan_address(bf1942);
 
         if (bf1942->pReadBuffer == 0 || bf1942->pGamespyDecompressRoutine == 0
-            || bf1942->pSetReadBufferGsReturn == 0 || bf1942->pSetDecryptRoutineGsReturn == 0) {
+            || bf1942->pSetReadBufferGsReturn == 0 || bf1942->pSetDecryptRoutineGsReturn == 0
+            || bf1942->pFirstByteAddrMagicByte == 0) {
 
             ::MessageBox(
 
@@ -390,6 +406,8 @@ BOOL APIENTRY DllMain( HMODULE hModule,
         set_read_buffer_gs_return(bf1942->pSetReadBufferGsReturn);
 
         set_decrypt_routine_gs_return(bf1942->pSetDecryptRoutineGsReturn);
+
+        set_first_magic_byte_addr(bf1942->pFirstByteAddrMagicByte);
 
         place_patchs(bf1942);
 

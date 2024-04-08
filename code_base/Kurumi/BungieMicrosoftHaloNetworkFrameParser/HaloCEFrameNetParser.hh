@@ -20,7 +20,12 @@ typedef struct HaloCEGameservers {
 	/*
 		Server signature/randon/bytes
 	*/
-	unsigned char serverSign[10];
+	unsigned char *serverSign;
+
+	/*
+		Server signature size, always 10
+	*/
+	size_t szServerSign;
 
 };
 
@@ -89,6 +94,11 @@ private:
 	*/
 	const unsigned char m_flagNewServer{ 0x3F };
 
+	/*
+		The max size a payload can have.
+	*/
+	const int m_MAX_PAYLOAD_SIZE = 4096;
+
 public:
 	HaloCEFrameNetParser(std::string& strFilePath);
 
@@ -96,9 +106,9 @@ public:
 	
 	auto setRequesterIp(const char* chIpv4) -> void;
 	
-	auto addServer(const char* chIpv4, const char* chPort) -> void;
+	auto addServer(const char* chIpv4, const char* chPort) -> bool;
 	
-	auto deleteServer(const char* chIpv4, const char* chPort) -> void;
+	auto deleteServer(const char* chIpv4, const char* chPort) -> bool;
 	
 	auto getNewPayload() -> unsigned char*;
 	

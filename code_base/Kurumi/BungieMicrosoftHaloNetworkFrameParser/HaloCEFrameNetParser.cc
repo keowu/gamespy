@@ -70,7 +70,13 @@ HaloCEFrameNetParser::HaloCEFrameNetParser(std::string& strFilePath) {
 
 			offset += sizeof(uint16_t);
 
-			std::memcpy(newServer.serverSign, &gameFlagsPtr[offset], 10);
+			auto sz = 10;
+
+			newServer.serverSign = new unsigned char[sz] { 0 };
+
+			newServer.szServerSign = sz;
+
+			std::memcpy(newServer.serverSign, &gameFlagsPtr[offset], sz);
 
 			offset -= 1; // return to last byte of port
 
@@ -88,12 +94,65 @@ HaloCEFrameNetParser::HaloCEFrameNetParser(std::string& strFilePath) {
 		i += offset;
 	}
 
-	/*
-	* Talvez tenha um bug nessa formatação de um ip randomico com porta randomica por alguma rasão desconhecida
-	* mas pode ser apenas coisa da minha cabeça cansada.
-	*/
+	this->m_gameFlags.pop_back();
 }
 
+auto HaloCEFrameNetParser::getNewPayload() -> unsigned char* {
+
+	auto chBuffer = new unsigned char[m_MAX_PAYLOAD_SIZE] { 0 };
+
+	auto tempPtr = chBuffer;
+
+	std::memcpy(tempPtr, &this->m_requesterIP, sizeof(uint32_t));
+
+	tempPtr += sizeof(uint32_t);
+
+	std::memcpy(tempPtr, &this->m_defaultGameServerPort, sizeof(uint16_t));
+
+	tempPtr += sizeof(uint16_t);
+
+	for (auto& flag : this->m_gameFlags) {
+
+		std::memcpy(tempPtr, flag.ucRawFlagBytes, flag.uipServersFrameOffsetSize);
+
+		tempPtr += flag.uipServersFrameOffsetSize;
+
+		for (auto& servers : flag.vecGameServers) {
+
+			std::memcpy(tempPtr, &this->m_flagNewServer, sizeof(unsigned char));
+
+			tempPtr += sizeof(unsigned char);
+
+			std::memcpy(tempPtr, &servers.dwServerIP, sizeof(uint32_t));
+
+			tempPtr += sizeof(uint32_t);
+
+			std::memcpy(tempPtr, &servers.dwServerPort, sizeof(uint16_t));
+
+			tempPtr += sizeof(uint16_t);
+
+			std::memcpy(tempPtr, servers.serverSign, servers.szServerSign);
+
+			tempPtr += servers.szServerSign;
+
+		}
+
+	}
+
+	unsigned char chZeroed{ 0x00 };
+
+	std::memcpy(tempPtr, &chZeroed, sizeof(unsigned char));
+
+	tempPtr += 1;
+
+	std::memcpy(tempPtr, &this->m_endFrameSignature, sizeof(uint32_t));
+
+	delete this->m_rawBuffer;
+
+	this->m_rawBuffer = chBuffer;
+
+	return chBuffer;
+}
 
 HaloCEFrameNetParser::operator std::string() const {
 
@@ -140,35 +199,69 @@ auto HaloCEFrameNetParser::setRequesterIp(const char* chIpv4) -> void {
 
 }
 
-auto HaloCEFrameNetParser::addServer(const char* chIpv4, const char* chPort) -> void {
+auto HaloCEFrameNetParser::addServer(const char* chIpv4, const char* chPort) -> bool {
 
-	//TODO
+	int b1{ 0 }, b2{ 0 }, b3{ 0 }, b4{ 0 }, port{ 0 };
 
+	sscanf_s(chIpv4, "%d.%d.%d.%d", &b1, &b2, &b3, &b4);
+
+	sscanf_s(chPort, "%d", &port);
+
+	for (auto& gameFlags : this->m_gameFlags)
+		for (auto& server : gameFlags.vecGameServers)
+			if (server.dwServerIP == 0) {
+
+				server.dwServerIP = (b4 << 24) |
+					(b3 << 16) |
+					(b2 << 8) |
+					b1;
+
+				server.dwServerPort = _byteswap_ushort(port);
+
+				return true;
+			}
+
+	return false;
 }
 
-auto HaloCEFrameNetParser::deleteServer(const char* chIpv4, const char* chPort) -> void {
+auto HaloCEFrameNetParser::deleteServer(const char* chIpv4, const char* chPort) -> bool {
 
-	//TODO
+	int b1{ 0 }, b2{ 0 }, b3{ 0 }, b4{ 0 }, port{ 0 };
 
-}
+	sscanf_s(chIpv4, "%d.%d.%d.%d", &b1, &b2, &b3, &b4);
 
-auto HaloCEFrameNetParser::getNewPayload() -> unsigned char* {
+	sscanf_s(chPort, "%d", &port);
 
-	//TODO
+	for (auto& gameFlags : this->m_gameFlags)
+		for (auto& server : gameFlags.vecGameServers)
+			if (server.dwServerIP == ((b4 << 24) | (b3 << 16) | (b2 << 8) | b1) 
+				&& server.dwServerPort == _byteswap_ushort(port)) {
 
-	return 0;
+				server.dwServerIP = 0;
+
+				server.dwServerPort = 0;
+
+				return true;
+			}
+
+	return false;
+
 }
 
 auto HaloCEFrameNetParser::getRawPayload() -> unsigned char* {
 
-	//TODO
-
-	return 0;
+	return this->m_rawBuffer;
 }
 
 auto HaloCEFrameNetParser::writeNewPayload(std::string& path) -> bool {
 
-	//TODO
+	std::ofstream out(path, std::ios::binary);
+
+	if (!out) return false;
+
+	out.write(reinterpret_cast<char*>(this->getNewPayload()), this->m_MAX_PAYLOAD_SIZE);
+
+	out.close();
 
 	return false;
 }
