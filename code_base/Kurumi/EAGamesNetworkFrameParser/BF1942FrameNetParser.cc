@@ -123,13 +123,13 @@ auto BF1942FrameNetParser::checkServerStatus( BF1942gameServers* bfg ) -> bool {
 
 auto BF1942FrameNetParser::addNewServer( const char* chSeverIp, const char* chSeverPort, bool check ) -> bool {
 
+	BF1942gameServers srv{ 0 };
+
 	int b1{ 0 }, b2{ 0 }, b3{ 0 }, b4{ 0 }, port{ 0 };
 
 	sscanf_s( chSeverIp, "%d.%d.%d.%d", &b1, &b2, &b3, &b4 );
 
 	sscanf_s( chSeverPort, "%d", &port );
-
-	BF1942gameServers srv { 0 };
 
 	srv.dwServerIP = (b4 << 24) |
 		(b3 << 16) |
@@ -192,18 +192,15 @@ auto BF1942FrameNetParser::getRawPayload( ) -> unsigned char* {
 
 BF1942FrameNetParser::operator std::string( ) const {
 
-	std::string out;
+	std::ostringstream out;
 
-	for ( auto bfServer : this->m_servers ) {
+	for ( auto bfServer : this->m_servers )
 
-		char chServerString[ 64 ]{ 0 };
+		out << ( bfServer.dwServerIP & 0xff ) << "." << ( ( bfServer.dwServerIP >> 8 ) & 0xff ) << "."
+			<< ( ( bfServer.dwServerIP >> 16 ) & 0xff ) << "." << ( ( bfServer.dwServerIP >> 24 ) & 0xff )
+			<< ":" << _byteswap_ushort( bfServer.dwServerPort ) << "\n";
 
-		sprintf_s( chServerString, "%d.%d.%d.%d:%d\n", bfServer.dwServerIP & 0xff, ( bfServer.dwServerIP >> 8 ) & 0xff, ( bfServer.dwServerIP >> 16 ) & 0xff, ( bfServer.dwServerIP >> 24 ) & 0xff, _byteswap_ushort( bfServer.dwServerPort ) );
-
-		out.append( chServerString );
-	}
-
-	return out;
+	return out.str( );
 }
 
 BF1942FrameNetParser::~BF1942FrameNetParser( ) {

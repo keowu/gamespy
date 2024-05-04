@@ -232,7 +232,7 @@ extern _memcpy: proc
 		popfd
 		popad
 
-		call _fake_frames_to_decrypt ; fake the frames into original EA buffer
+		call _fake_frames_to_decrypt ; Modify the frames into a new GS buffer handler
 
 		mov eax, dword ptr [patch_first_byte]
 		push ebx
@@ -242,8 +242,8 @@ extern _memcpy: proc
 		push ecx ; len
 		lea  edx, patch_frame_buffer[eax]
 		mov eax, [esi+88h]
-		push edx             ; buf
-		push eax             ; s
+		push edx             ; bufffer
+		push eax             ; socket struct
 
 		push read_buffer_gs_return ; return to recv
 
@@ -262,7 +262,7 @@ GameSpyDecrompressSection segment
 		push eax
 		mov edx, edi
 		mov ecx, ebp
-		call _decompress_two
+		call _decompress_two ; Call my own decompress2 assembly implementation
 
 		pushad
 		pushfd
@@ -280,7 +280,7 @@ GameSpyDecrompressSection segment
 		popfd
 		popad
 		
-		add edi, 5 ; ALIGN THE EA/GAMESPY STRUCT. hehe the nandayo
+		add edi, 5 ; ALIGN THE GAMESPY STRUCT. hehe the nandayo
 
 		push decrypt_routine_gs_return
 		ret

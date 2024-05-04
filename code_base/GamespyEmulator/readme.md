@@ -8,6 +8,10 @@ Este artigo visa documentar e também apresentar meus passos durante os estágio
 
 ![#0](imagens/intro.png)
 
+## Table of Contents
+1. [Introdução](#introdução)
+2. TODO
+
 ### Uma leve motivação
 
 No clima nostalgico que esta pesquisa nos apresenta. outro grande clássico dos mundos dos games(em especial da minha terra natal. O Brasil), do meu youtuber favorito dos games Zangado e suas maravilhosas palavras de reflexões dos games e da vida.
@@ -606,11 +610,87 @@ Vamos agora escrever uma nova Master Server List Provider para nosso novo módul
 
 #### Escrevendo uma nova Master Server List provider
 
-TODO
+Escrever uma nova Masterserver não é uma tarefa tão complexa graças a todo o entendimento e insumos que geramos com nossa engenharia reversa e documentamos nesse artigo, para esta tarefa escolhi a linguagem C# com a versão do .Net Framework 8. pois é altamente portável e eu consigo gerar uma release que rodara tanto no Windows como também no Linux(sim isso é possível através da configuração de deploy. irei explicar como fazer isso).
+
+Organizei o desenvolvimento de uma simples Masterserver em etapas sendo elas:
+
+1. Criar uma classe base de suporte Socket TCP.
+2. Definir um método de escuta parfa clientes a serem conectados.
+3. Criar um método de HandleClient para cada cliente conectado no servidor.
+4. Preparar o arquivo de payload para sempre que um novo cliente conectar ao servidor o conteúdo ser enviado.
+5. Enviar a mensagem de ```Hello``` -> ```\\basic\\secure\\MASTER``` logo no início da conexão com o cliente.
+6. Receber a query do cliente solicitando o payload de servidores ```bfield1942\\final```.
+7. Verificar se a query do cliente foi recebida e enviar o devido payload ao cliente.
+8. Aguardar o cliente encerrar a conexão.
+
+Não tem segredo, o código é um simples socket TCP que aceitara as conexões para a porta ```28900``` que é a mesma porta utilizada pela Gamespy.
+
+![#47](imagens/bf1942_35.png)
+
+O ponto principal aqui é a implementação, já que apresentamos totalmente o protocolo nos tópicos anteriores, então aqui vamos focar em apresentar como foi implementado a comunicação entre o cliente e o servidor:
+
+![#48](imagens/bf1942_36.png)
+
+Quando um cliente conectar, eu obtenho o payload mais recente do binário gerado pelo projeto ```EAGamesNetworkFrameParser``` então envio o comando/mensagem de apresentação de ```\\basic\\secure\\MASTER```. e em seguida inicio um loop infinito para receber o comando da query enviado pelo cliente, claramente validando qualquer exception e tratando casos inesperados como um cliente desconectar abruptamente. porem para enviar o payload de servidores é necessário buscarmos pelo prefixo final que indica a última autenticação enviada. ao recebe-lo apenas envio o conteúdo do nosso payload de servidores ao cliente e encerro o socket.
+
+Como o nosso intuíto não era implementar todos os recursos oferecidos pela Gamespy como os filtros das querys de servidor, eu me preocupei com o básico que é enviar a lista de servidores corretamente da maneira que o cliente do jogo espera. e a partir disso com essa simples implementação, tudo funcionara bem!
+
+Espere, é só isso ? isso é uma masterserver emulator simples ?
+
+![#49](imagens/genericanimestuff9.png)
+
+A implementação é simples quando já se tem toda a base para ela. existe todo um trabalho de entender o protocolo e como o jogo funcionava antes de propriamente implementar todos os recursos vistos aqui neste artigo. uma coisa leva a outra. e a cada pequeno passo temos uma grande conquista, nesse caso uma Gamespy Browerser Server List completamente ao nosso dispor e controle para todos os jogos lançados e usando a SDK de 2002.
+
+**Se você estiver se perguntando como funciona o deploy para o linux** ele é relativamente simples:
+
+Gerando uma build usando o Visual Studio 2022:
+- Com o projeto aberto vá no menu ```Build``` > ```Publish Selection```
+- Selecione ```Folder``` nas opções do dialogo aberto e pressione next e repita o mesmo processo
+- Defina o diretório a ser salvo o build para linux e clique em ```Finish```
+- Clique na opção ```Show All Settings``` da publish aberta. clique no select box da ```Target Runtime``` e selecione ```Linux-x64```, marque a opção ```Produce Single File``` e clique em ```salvar```.
+- Por fim clique no botão ```Publish``` e apenas aguarde até a solução ser compilada.
+- Vá até o diretório e copie o binário ELF gerado e avance para preparação o seu Linux em questão.
+
+Preparando ambiente no Linux:
+- Não detalharei o processo de instalação do Dot Net Runtime 8.0(não existe segredo o próprio binário de resultado vai lhe fornecer instruções para Download).
+- Deina as variaveis de ambiente: ```export DOTNET_ROOT=/home/ubuntu/gamespymasterserver/dotnet8.2```, ```export PATH=$PATH:/home/ubuntu/gamespymasterserver/dotnet8.2```
+- Libere as devidas portas no seu firewall: ```sudo firewall-cmd --add-port=28900/tcp```
+- Rode o binário compilado: ```./GameSpyMasterServer &```
+- ! Dependendo da sua plataforma de hospedagem é necessário configurar a porta TCP pelo painel do provedor.
+
+Veja como ficou nossa masterserver plenamente funcionando em conjunto com o projeto todo:
+
+GameSpy Master server esperando novos clientes:
+
+![#50](imagens/bf1942_37.png)
+
+Um novo cliente conectou e desconectou logo em seguida:
+
+![#51](imagens/bf1942_38.png)
+
+Enquanto isso do lado do cliente todos os servidores são renderizado com sucesso com base no payload de servidores gerados por nós:
+
+![#52](imagens/bf1942_39.png)
+
+#### Testando o projeto
+
+Vamos testar agora os resultados obtidos com nossa pesquisa, aqui vamos ter demos em vídeos no youtube de tudo em perfeito funcionando:
+
+**DEMO 1:**
+
+[![KewGamespy - Battlefield 1942 DEMO 1](https://img.youtube.com/vi/i-fychw0dRg/0.jpg)](https://www.youtube.com/watch?v=i-fychw0dRg)
+
+**DEMO 2:**
+
+[![KewGamespy - Battlefield 1942 DEMO 2](https://img.youtube.com/vi/4qE0TIcTXuA/0.jpg)](https://www.youtube.com/watch?v=4qE0TIcTXuA)
 
 ## Halo Combat Evolved
 
+DOING
+
 ## Battlefield Vietnam
+
+TODO
 
 ## Futuras ideias
 

@@ -6,6 +6,8 @@
 #include <vector>
 #include <iostream>
 #include <fstream>
+#include <sstream>
+#include <iomanip>
 #include <ws2tcpip.h>
 #include <WinSock2.h>
 #include "TeaDelKewAlgo.hh"

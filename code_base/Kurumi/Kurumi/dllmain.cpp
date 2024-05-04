@@ -2,10 +2,14 @@
     (C) Keowu - 2024
 */
 #include <Windows.h>
+#include <dbghelp.h>
+#include <strsafe.h>
 #include <iostream>
 #include <list>
 #include "bddisasm/bddisasm.h"
 #include "TeaDelKewAlgo.hh"
+
+#pragma comment(lib, "Dbghelp.lib")
 
 static BOOL g_run = TRUE;
 #define DEBUG FALSE //ACTIVATE DEBUG MODE
@@ -364,6 +368,120 @@ auto place_patchs(BF1942_GS_NETWORK* bf1942) -> void {
 
 }
 
+auto WINAPI KewExceptionHandler(EXCEPTION_POINTERS* pExceptionInfo) -> NTSTATUS {
+
+    //Generating a MiniDump
+    WCHAR wchPath[MAX_PATH]{ 0 };
+    WCHAR wchFileName[MAX_PATH]{ 0 };
+
+    SYSTEMTIME stLocalTime;
+    MINIDUMP_EXCEPTION_INFORMATION ExpParam;
+
+    GetLocalTime(
+        
+        &stLocalTime
+    
+    );
+
+    GetTempPath(
+        
+        MAX_PATH,
+        wchPath
+    
+    );
+
+    StringCchPrintf(
+        
+        wchFileName,
+        MAX_PATH,
+        L"%s%s",
+        wchPath,
+        L"KurumiBF1942"
+    
+    );
+    
+    CreateDirectory(
+        
+        wchFileName,
+        NULL
+    
+    );
+
+    StringCchPrintf(
+        
+        wchFileName,
+        MAX_PATH,
+        L"%s%s\\%s-%04d%02d%02d-%02d%02d%02d-%ld-%ld.dmp",
+        wchPath,
+        L"KurumiBF1942",
+        L"v1.1",
+        stLocalTime.wYear,
+        stLocalTime.wMonth,
+        stLocalTime.wDay,
+        stLocalTime.wHour,
+        stLocalTime.wMinute,
+        stLocalTime.wSecond,
+        GetCurrentProcessId( ),
+        GetCurrentThreadId( )
+    
+    );
+
+    auto hDumpFile = CreateFile(
+        
+        wchFileName,
+        GENERIC_READ | GENERIC_WRITE,
+        FILE_SHARE_WRITE | FILE_SHARE_READ,
+        0,
+        CREATE_ALWAYS,
+        0,
+        0
+    
+    );
+
+    ExpParam.ThreadId = GetCurrentThreadId( );
+    ExpParam.ExceptionPointers = pExceptionInfo;
+    ExpParam.ClientPointers = TRUE;
+
+    auto bMiniDumpSuccessful = MiniDumpWriteDump(
+        
+        GetCurrentProcess(),
+        GetCurrentProcessId(),
+        hDumpFile,
+        MiniDumpWithDataSegs,
+        &ExpParam,
+        NULL,
+        NULL
+    
+    );
+
+    // This verification is just for a small fun with some brazilians!
+    if (
+        PRIMARYLANGID(
+            LANGIDFROMLCID( GetUserDefaultLCID( ) ) ) == LANG_PORTUGUESE
+        && SUBLANGID(
+            LANGIDFROMLCID( GetUserDefaultLCID( ) ) ) == SUBLANG_PORTUGUESE_BRAZILIAN
+        )
+        ::MessageBoxW(
+
+            NULL,
+            L"A não deu pau mano!\nAgora para você não fazer o L eu vou gerar um MiniDump para você investigar o que rolou ou você pode ir lá no Github pedir ajuda(github.com/keowu/gamespy).",
+            L"Faça o L Imediatamente, Except!",
+            NULL
+
+        );
+    else
+        ::MessageBoxW(
+        
+            NULL,
+            L"Bro something goes really bad.\nWe are creating a MiniDump so you can investigate it or open a issue on github asking for help(github.com/keowu/gamespy).",
+            L"Oh no, Except!",
+            NULL
+    
+        );
+
+    return !TerminateProcess(::GetCurrentProcess(), pExceptionInfo->ExceptionRecord->ExceptionCode);
+}
+
 BOOL APIENTRY DllMain( HMODULE hModule,
                        DWORD  ul_reason_for_call,
                        LPVOID lpReserved
@@ -371,13 +489,15 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 
     if ( g_run ) {
 
-        ::DisableThreadLibraryCalls(hModule);
+        ::DisableThreadLibraryCalls( hModule );
+
+        ::AddVectoredExceptionHandler( TRUE, reinterpret_cast< PVECTORED_EXCEPTION_HANDLER >( KewExceptionHandler ) );
 
         if (DEBUG) {
          
-            ::AllocConsole();
+            ::AllocConsole( );
 
-            ::freopen_s(reinterpret_cast<FILE**>(stdout), "CONOUT$", "w", stdout);
+            ::freopen_s( reinterpret_cast< FILE** >( stdout ), "CONOUT$", "w", stdout );
 
         }
 
