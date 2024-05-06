@@ -769,11 +769,7 @@ Para uma maior estabilidade da solução proposta neste artigo, todos os módulo
 
 - Para o módulo Kurumi todos os MiniDumps são armazenados no diretório temporário em uma pasta apelidada de "KurumiBF1942", por exemplo: C:\Users\YOURUSER\AppData\Local\Temp\KurumiBF1942\.
 
-- Para o módulo Kuromi todos os MiniDumps são armazenados no diretório temporário em uma pasta apelidada de "KuromiHALOCE", por exemplo: C:\Users\YOURUSER\AppData\Local\Temp\KuromiHALOCE\.
-
-- Para o módulo Kuromi todos os MiniDumps são armazenados no diretório temporário em uma pasta apelidada de "KuromiHALOCE", por exemplo: C:\Users\YOURUSER\AppData\Local\Temp\KuromiHALOCE\.
-
-- Para o módulo XXXXXXXXX todos os MiniDumps são armazenados no diretório temporário em uma pasta apelidada de "XXXXXXXXX", por exemplo: C:\Users\YOURUSER\AppData\Local\Temp\XXXXXXXXX\.
+- Para o módulo Kuromi todos os MiniDumps são armazenados no diretório temporário em uma pasta apelidada de "KuromiGS2004", por exemplo: C:\Users\YOURUSER\AppData\Local\Temp\KuromiGS2004\.
 
 Todos os dumps são gerados com base no padrão Microsoft(momento do crash + prefixo dmp).
 

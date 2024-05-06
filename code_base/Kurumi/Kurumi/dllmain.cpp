@@ -244,10 +244,8 @@ auto place_patchs(BF1942_GS_NETWORK* bf1942) -> void {
 
     uintptr_t uiReplacedFirstPatch = reinterpret_cast< uintptr_t >( replaced_read_buffer );
 
-    unsigned char chFirstPatch[29] = {
+    unsigned char chFirstPatch[27] = {
 
-        0x60, // pushad
-        0x9C, // pushfd
         0x68, 0x00, 0x00, 0x00, 0x00, // push address_of_replaced_read_buffer
         0xC3, // ret
         0x90,
@@ -276,7 +274,7 @@ auto place_patchs(BF1942_GS_NETWORK* bf1942) -> void {
 
     std::memcpy(
         
-        &*(chFirstPatch + 3),
+        &*(chFirstPatch + 1),
         &uiReplacedFirstPatch,
         sizeof(uintptr_t)
     
@@ -287,7 +285,7 @@ auto place_patchs(BF1942_GS_NETWORK* bf1942) -> void {
         ::GetCurrentProcess( ), 
         reinterpret_cast< LPVOID >( bf1942->pReadBuffer ),
         chFirstPatch,
-        29,
+        27,
         NULL
     
     );
@@ -296,10 +294,8 @@ auto place_patchs(BF1942_GS_NETWORK* bf1942) -> void {
         The second patch will replace before the gamespy decompress 2. and will call it from another place and replace the original buffer with
         by the decrypted buffer.
     */
-    unsigned char chSecondPatch[17] = {
+    unsigned char chSecondPatch[15] = {
 
-        0x60, // pushad
-        0x9C, // pushfd
         0x68, 0x00, 0x00, 0x00, 0x00, //push address_of_replaced_read_buffer
         0xC3, // ret
         0x90,
@@ -318,7 +314,7 @@ auto place_patchs(BF1942_GS_NETWORK* bf1942) -> void {
 
     std::memcpy(
         
-        &*(chSecondPatch + 3),
+        &*(chSecondPatch + 1),
         &uiReplacedSecondPatch,
         sizeof(uintptr_t)
     
@@ -329,7 +325,7 @@ auto place_patchs(BF1942_GS_NETWORK* bf1942) -> void {
         ::GetCurrentProcess( ),
         reinterpret_cast<void*>( bf1942->pGamespyDecompressRoutine ),
         chSecondPatch,
-        17,
+        15,
         NULL
     
     );

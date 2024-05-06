@@ -73,6 +73,13 @@ auto place_patchs() -> void {
 
 auto WINAPI KewExceptionHandler(EXCEPTION_POINTERS* pExceptionInfo) -> NTSTATUS {
 
+    //Microsoft DRM calls Exception Handler Sometimes, we do not need to generate exception for that cases
+    MEMORY_BASIC_INFORMATION mb{ 0 };
+
+    ::VirtualQuery(::GetModuleHandle(L"Kuromi.dll"), &mb, sizeof(mb));
+
+    if (pExceptionInfo->ContextRecord->Eip < reinterpret_cast<DWORD>(mb.AllocationBase) || pExceptionInfo->ContextRecord->Eip > reinterpret_cast<DWORD>(mb.AllocationBase) + mb.RegionSize) return EXCEPTION_CONTINUE_EXECUTION;
+
     //Generating a MiniDump
     WCHAR wchPath[MAX_PATH]{ 0 };
     WCHAR wchFileName[MAX_PATH]{ 0 };

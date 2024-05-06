@@ -227,10 +227,6 @@ extern _memcpy: proc
 	_fake_frames_to_decrypt endp
 
 	_replaced_read_buffer proc
-		
-		; restauring registers context
-		popfd
-		popad
 
 		call _fake_frames_to_decrypt ; Modify the frames into a new GS buffer handler
 
@@ -253,9 +249,6 @@ extern _memcpy: proc
 GameSpyDecrompressSection segment
 
 	_fake_gamespy_decompress_routine_2 proc
-
-		popfd
-		popad
 
 		sub eax, edi
 		add eax, 09798B0h
