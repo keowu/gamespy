@@ -684,13 +684,18 @@ Vamos testar agora os resultados obtidos com nossa pesquisa, aqui vamos ter demo
 
 [![KewGamespy - Battlefield 1942 DEMO 2](https://img.youtube.com/vi/4qE0TIcTXuA/0.jpg)](https://www.youtube.com/watch?v=4qE0TIcTXuA)
 
-## Halo Combat Evolved
 
-DOING
+## A Gamespy de 2004
 
-## Battlefield Vietnam
-
-TODO
+- Explicar as principai mudanças, mostrando o novo protocolo
+- Explicar como funciona o novo payload e sistemas de flags
+- Reverter o Algoritmo GOA dessa versão(explicar como funciona etc, dar a base apesar de não fazer diferença sua implementação para a solução)
+- Escrevendo um parser para o novo protocolo
+- Mostrar como são feitas as correções no GS SDK 2004
+- Mostrar as adaptações feitas no projeto do masterserver para suportar duas portas etc
+- Falar sobre o Halo Combat Evolved e a implementação nele
+- Falar sobre o Battlefield Vietnam e a implementação nele
+- Testando o jogo
 
 ## Futuras ideias
 

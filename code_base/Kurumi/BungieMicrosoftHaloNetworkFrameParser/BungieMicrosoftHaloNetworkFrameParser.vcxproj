@@ -24,6 +24,7 @@
     <ProjectGuid>{3be46128-af17-40e8-a541-06a31a43519e}</ProjectGuid>
     <RootNamespace>BungieMicrosoftHaloNetworkFrameParser</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>Gamespy2004NetworkFrameParser</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">

@@ -6,13 +6,13 @@
 #include <strsafe.h>
 #include <iostream>
 #include <list>
+#include "Utils.hpp"
 #include "bddisasm/bddisasm.h"
-#include "TeaDelKewAlgo.hh"
 
 #pragma comment(lib, "Dbghelp.lib")
 
 static BOOL g_run = TRUE;
-#define DEBUG FALSE //ACTIVATE DEBUG MODE
+#define DEBUG FALSE
 
 extern "C" void fake_frames_to_decrypt();
 extern "C" void replaced_read_buffer();
@@ -20,17 +20,6 @@ extern "C" void fake_gamespy_decompress_routine_2();
 extern "C" void set_read_buffer_gs_return(uintptr_t addr);
 extern "C" void set_decrypt_routine_gs_return(uintptr_t addr);
 extern "C" void set_first_magic_byte_addr(uintptr_t addr);
-
-
-//TODO: THIS GAMEPACKETS ENCRYPT AND DECRYPT HERE!
-extern "C" void _stdcall game_packets_decrypt(uintptr_t bufferPointer) {
-
-    uint32_t plaintext[2]{ 0x01234567, 0x89abcdef };
-    uint32_t key[4]{ 0x00B0B0CA, 0x00B0B0CA, 0x00B0B0CA, 0x00B0B0CA };
-
-    TeaDelKewAlgo::tea_del_kew_decrypt(plaintext, key);
-
-}
 
 typedef struct BF1942_GS_NETWORK {
 
@@ -43,30 +32,9 @@ typedef struct BF1942_GS_NETWORK {
 
 };
 
-auto find_section(const char* chName) -> std::pair<uintptr_t, uintptr_t> {
-    
-    auto imgNtH = reinterpret_cast<PIMAGE_NT_HEADERS>(reinterpret_cast<unsigned char*>(::GetModuleHandle(NULL)) + reinterpret_cast<PIMAGE_DOS_HEADER>(::GetModuleHandle(NULL))->e_lfanew);
-
-    auto sectionHeader = IMAGE_FIRST_SECTION(imgNtH);
-
-    auto textVa = 0, textSize = 0;
-
-    for (auto i = 0; i < imgNtH->FileHeader.NumberOfSections; ++i)
-
-        if (strcmp(reinterpret_cast<char*>(sectionHeader[i].Name), chName) == 0) {
-
-            textVa = imgNtH->OptionalHeader.ImageBase + sectionHeader[i].VirtualAddress;
-            textSize = sectionHeader[i].SizeOfRawData;
-
-            break;
-        }
-
-    return std::make_pair(textVa, textSize);
-}
-
 auto scan_address( BF1942_GS_NETWORK* bf1942 ) -> void {
 
-    auto textSection = find_section(".text");
+    auto textSection = Utils::find_section(".text");
 
     if (textSection.first == 0 && textSection.second == 0) return;
 
@@ -224,7 +192,7 @@ auto scan_address( BF1942_GS_NETWORK* bf1942 ) -> void {
 
     }
 
-    auto dataSection = find_section(".data");
+    auto dataSection = Utils::find_section(".data");
 
     if (dataSection.first == 0 && dataSection.second == 0) return;
 
@@ -457,14 +425,14 @@ auto WINAPI KewExceptionHandler(EXCEPTION_POINTERS* pExceptionInfo) -> NTSTATUS 
     // This verification is just for a small fun with some brazilians!
     if (
         PRIMARYLANGID(
-            LANGIDFROMLCID( GetUserDefaultLCID( ) ) ) == LANG_PORTUGUESE
+            LANGIDFROMLCID( ::GetUserDefaultLCID( ) ) ) == LANG_PORTUGUESE
         && SUBLANGID(
-            LANGIDFROMLCID( GetUserDefaultLCID( ) ) ) == SUBLANG_PORTUGUESE_BRAZILIAN
+            LANGIDFROMLCID( ::GetUserDefaultLCID( ) ) ) == SUBLANG_PORTUGUESE_BRAZILIAN
         )
         ::MessageBoxW(
 
             NULL,
-            L"A não deu pau mano!\nAgora para você não fazer o L eu vou gerar um MiniDump para você investigar o que rolou ou você pode ir lá no Github pedir ajuda(github.com/keowu/gamespy).",
+            L"Ha não, deu pau mano!\nAgora para você não fazer o L eu vou gerar um MiniDump para você investigar o que rolou ou você pode ir lá no Github pedir ajuda(github.com/keowu/gamespy).",
             L"Faça o L Imediatamente, Except!",
             NULL
 
