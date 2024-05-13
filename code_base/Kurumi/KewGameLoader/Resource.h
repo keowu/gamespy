@@ -1,3 +1,6 @@
+/*
+    (C) Keowu - 2024
+*/
 //{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ generated include file.
 // Used by KewGameLoader.rc

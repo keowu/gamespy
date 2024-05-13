@@ -676,13 +676,13 @@ Enquanto isso do lado do cliente todos os servidores são renderizado com sucess
 
 Vamos testar agora os resultados obtidos com nossa pesquisa, aqui vamos ter demos em vídeos no youtube de tudo em perfeito funcionando:
 
-**DEMO 1:**
+**DEMO 1(Dev showing the project):**
 
-[![KewGamespy - Battlefield 1942 DEMO 1](https://img.youtube.com/vi/i-fychw0dRg/0.jpg)](https://www.youtube.com/watch?v=i-fychw0dRg)
+[![KewGamespy - Battlefield 1942 DEMO 1](https://img.youtube.com/vi/VOKm6LyfC30/0.jpg)](https://www.youtube.com/watch?v=VOKm6LyfC30)
 
-**DEMO 2:**
+**DEMO 2(Small Gameplay):**
 
-[![KewGamespy - Battlefield 1942 DEMO 2](https://img.youtube.com/vi/4qE0TIcTXuA/0.jpg)](https://www.youtube.com/watch?v=4qE0TIcTXuA)
+[![KewGamespy - Battlefield 1942 DEMO 2](https://img.youtube.com/vi/XSBIUQTtwIg/0.jpg)](https://www.youtube.com/watch?v=XSBIUQTtwIg)
 
 
 ## A Gamespy de 2004
@@ -697,11 +697,26 @@ Vamos testar agora os resultados obtidos com nossa pesquisa, aqui vamos ter demo
 - Falar sobre o Battlefield Vietnam e a implementação nele
 - Testando o jogo
 
-## Futuras ideias
+## Futuras ideias(REMOVE ou Virar um RoadMap, algumas coisas podem continuar)
 
 ##### Gameloader
 
 TODO
+
+##### Dicas de modo Janela para Desenvolvimento
+
+Se você estiver procurando uma maneira de trabalhar com a base provida aqui de maneira mais simplificada. com certeza não é em FullScreen. o maior problema dos Battlefield's mais antigos é que devido a hooks de teclas e APIs desatualizadas da DirectX 8 encontramos diversos problemas e bugs de janela enquanto estamos trabalhando em melhorias no nosso projeto principalmente se você estiver usando o Windows 11. e para resolver esse problema é bastante simples.
+
+Separei em duas etapas, a primeira direcionada aos Battlefield's e a segunda destinada para o Halo.
+
+Para resolver o problema para Battlefield 1942 ou Vietnam:
+- Vá até o binário do Jogo no diretório de instalação
+- Vá nas própriedades do binário do jogo e em seguida Modo de compatibilidade vá em ```run this program in compatibility mode for``` selecione ```Windows XP Service pack 2``` e salve.
+- Agora ainda nas propriedades selecione a checkbox ```Disable fullscreen optimizations```
+- Em seguida vá nos seguintes diretório ```C:\Program Files\EA Games\Battlefield 1942\Mods\bf1942\Settings``` procure dois arquivos e os abras em um editor de texto convencional: ```VideoDefault.con``` e ```Video.con``` Altere a ```linha renderer.setFullScreen``` para ```0```.
+
+Para resolver o problema do Halo é muito mais simples:
+- Vá no atalho do jogo do desktop e modifique a command line do jogo para adicionar o argumento ```-window```.
 
 ##### TeaDelKew
 

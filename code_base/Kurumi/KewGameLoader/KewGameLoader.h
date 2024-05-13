@@ -6,8 +6,13 @@
 #include "resource.h"
 
 NOTIFYICONDATA g_trayIcon{ 0 };
-BOOLEAN g_RuneableDiscovery = TRUE;
-auto chAgentModuleName = "Kurumi.dll";
+BOOLEAN g_RuneableDiscovery{ TRUE };
 
-LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
-void ShowAboutDialog(HWND hwnd);
+auto CALLBACK WindowProc(
+	
+	HWND hwnd,
+	UINT uMsg,
+	WPARAM wParam,
+	LPARAM lParam 
+
+) -> LRESULT;

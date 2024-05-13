@@ -27,9 +27,21 @@
     <ClInclude Include="KewGameLoader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="KewUsermodeProcessMonitor.hh">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="DevOverlayFrame.hh">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="KewGameLoader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="KewUsermodeProcessMonitor.cc">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="DevOverlayFrame.cc">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
