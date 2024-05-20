@@ -43,7 +43,7 @@ auto DevOverlayFrame::InternalDirectXPainter::init(
     ::D3DXCreateFont(
         
         device,
-        20,
+        15,
         0,
         FW_BOLD,
         1,
@@ -66,17 +66,10 @@ auto DevOverlayFrame::InternalDirectXPainter::update(
 
     if ( device == nullptr ) return 1;
 
-    device->Clear(
-        
-        0,
-        0,
-        D3DCLEAR_TARGET,
-        0,
-        1.0f,
-        0
-    
-    );
+    //Limpando a cena
+    device->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
 
+    //Reiniciando a cena
     device->BeginScene( );
 
     if ( TargetHWND == ::GetForegroundWindow( ) ) {
@@ -86,13 +79,19 @@ auto DevOverlayFrame::InternalDirectXPainter::update(
         rect.top = widht / 20;
         rect.left = height / 20;
 
-        auto str = "www.github.com/keowu/gamespy - Devmode is enabled - Be Happy!\nKewGameLoader Overlay V1.2\nMessages comming from internal module:\nPIPE Disabled by the DEV\n";
+        std::string strBuffer("");
+
+        GameIPC::ReadData(strBuffer);
+
+        std::string strFinal("www.github.com/keowu/gamespy - Devmode is enabled - Be Happy!\nKewGameLoader Overlay V1.2\n");
+
+        strFinal.append(strBuffer);
 
         font->DrawTextA(
             
             0,
-            str,
-            strlen(str),
+            strFinal.c_str(),
+            strlen(strFinal.c_str()),
             &rect,
             DT_NOCLIP,
             D3DCOLOR_ARGB( 255, 220, 20, 60 )
@@ -101,6 +100,7 @@ auto DevOverlayFrame::InternalDirectXPainter::update(
 
     }
 
+    //Encerrando cena
     device->EndScene(
     
     );
@@ -171,6 +171,8 @@ auto DevOverlayFrame::InitInstance(
 ) -> BOOL {
 
     hInst = hInstance;
+
+    GameIPC::InitPipe( );
 
     overlayHWND = CreateWindowExW(
         

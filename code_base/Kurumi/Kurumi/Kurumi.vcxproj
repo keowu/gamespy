@@ -146,6 +146,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="framework.h" />
+    <ClInclude Include="GameIPC.hh" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="Utils.hpp" />
   </ItemGroup>

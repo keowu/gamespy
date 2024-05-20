@@ -137,6 +137,7 @@
   <ItemGroup>
     <ClInclude Include="DevOverlayFrame.hh" />
     <ClInclude Include="framework.h" />
+    <ClInclude Include="GameIPC.hh" />
     <ClInclude Include="KewGameLoader.h" />
     <ClInclude Include="KewUsermodeProcessMonitor.hh" />
     <ClInclude Include="Resource.h" />

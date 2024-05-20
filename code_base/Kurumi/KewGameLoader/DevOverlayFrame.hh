@@ -4,6 +4,7 @@
 #pragma once
 #include <iostream>
 #include <Windows.h>
+#include "GameIPC.hh"
 
 /*
     Please do the following configurations to compile:

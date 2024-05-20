@@ -2,14 +2,30 @@
 
 .data
 
-	socket_gs2004_return dd 6201D3h
-    goadecbody_gs2004_return dd 61F722h
+	socket_gs2004_return dd ?
+    goadecbody_gs2004_return dd ?
 
 	old_gamespy_cls_buffer dd ?
 	new_gamespy_cls_buffer db 4096 dup(0)
 
-
 .code
+
+_set_socket_gs2004_return proc
+
+    mov eax, dword ptr [esp+4]
+    mov socket_gs2004_return, eax  ; Stack argument One
+    
+    ret
+_set_socket_gs2004_return endp
+
+_set_goadecbody_gs2004_return proc
+
+    mov eax, dword ptr [esp+4]
+    mov goadecbody_gs2004_return, eax  ; Stack argument One
+    
+    ret
+_set_goadecbody_gs2004_return endp
+
 
 _new_get_socket_gamespy_buffer_gs2004_stub proc
 
@@ -50,7 +66,6 @@ _new_goa_decrypt_buffer_gs2004_stub proc
 	push ebp
 	lea  eax, [esi+4ACh]
 
-
 	push edi
 
 	push eax
@@ -61,24 +76,24 @@ _new_goa_decrypt_buffer_gs2004_stub proc
 _new_goa_decrypt_buffer_gs2004_stub endp
 
 
-GoaGS2004Decrypt      proc near
-                                        
-    buffer1         = dword ptr  4
-    buffer2         = dword ptr  8
-    arg_8           = dword ptr  0Ch
+GoaGS2004Decrypt proc near
+
+    buffer1   = dword ptr  4
+    buffer2   = dword ptr  8
+    arg_stack = dword ptr  0Ch
 
     push    ebx
-    mov     ebx, [esp+4+arg_8]
+    mov     ebx, [esp+4+arg_stack]
     push    esi
     xor     esi, esi
     test    ebx, ebx
-    jle     short loc_62313F
+    jle     short loc_CheckBufferLength
     push    ebp
     mov     ebp, [esp+0Ch+buffer1]
     push    edi
     mov     edi, [esp+10h+buffer2]
 
-loc_623126:
+loc_DecryptLoop:
     xor     eax, eax
     mov     al, [esi+edi]
     push    eax
@@ -88,16 +103,17 @@ loc_623126:
     mov     [esi+edi], al
     inc     esi
     cmp     esi, ebx
-    jl      short loc_623126
+    jl      short loc_DecryptLoop
     pop     edi
     pop     ebp
 
-loc_62313F:
+loc_CheckBufferLength:
     pop     esi
     pop     ebx
 
     retn
 GoaGS2004Decrypt      endp
+
 
 GoaExecuteDecrypt proc near
 

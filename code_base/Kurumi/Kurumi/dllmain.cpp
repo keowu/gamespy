@@ -1,13 +1,16 @@
 ﻿/*
     (C) Keowu - 2024
 */
+#include <chrono>
+#include <thread>
+#include <list>
 #include <Windows.h>
 #include <dbghelp.h>
 #include <strsafe.h>
 #include <iostream>
-#include <list>
-#include "Utils.hpp"
 #include "bddisasm/bddisasm.h"
+#include "Utils.hpp"
+#include "GameIPC.hh"
 
 #pragma comment(lib, "Dbghelp.lib")
 
@@ -28,7 +31,7 @@ typedef struct BF1942_GS_NETWORK {
     uintptr_t pGamespyDecompressRoutine;
     uintptr_t pSetReadBufferGsReturn;
     uintptr_t pSetDecryptRoutineGsReturn;
-    char MasterServer[16];
+    char MasterServer[20];
 
 };
 
@@ -186,9 +189,7 @@ auto scan_address( BF1942_GS_NETWORK* bf1942 ) -> void {
 
         if (bf1942->pReadBuffer != 0 && bf1942->pGamespyDecompressRoutine != 0 
             && bf1942->pSetReadBufferGsReturn != 0 && bf1942->pSetDecryptRoutineGsReturn != 0
-            && bf1942->pFirstByteAddrMagicByte != 0) break;
-        
-        continue;       
+            && bf1942->pFirstByteAddrMagicByte != 0) break;    
 
     }
 
@@ -446,6 +447,68 @@ auto WINAPI KewExceptionHandler(EXCEPTION_POINTERS* pExceptionInfo) -> NTSTATUS 
     return !TerminateProcess(::GetCurrentProcess(), pExceptionInfo->ExceptionRecord->ExceptionCode);
 }
 
+auto WINAPI KewHandler(PVOID arg) -> DWORD {
+
+
+    auto bf1942 = reinterpret_cast<BF1942_GS_NETWORK*>(arg);
+
+    std::printf("[DBG]: Waiting for KewGameLoader....\n");
+
+    GameIPC::InitPipe();
+    
+    std::printf("[DBG]: IPC %X\n", GameIPC::hIPC);
+
+    std::string strInformation("");
+
+    auto mm = Utils::get_funct_diasm(reinterpret_cast<uintptr_t>(fake_frames_to_decrypt), "\nGamespyNewFramesDecrypt Routine:\n");
+    auto mm2 = Utils::get_funct_diasm(reinterpret_cast<uintptr_t>(replaced_read_buffer), "\nGamespyNewReadBuffer Routine:\n");
+    auto mm3 = Utils::get_funct_diasm(reinterpret_cast<uintptr_t>(fake_gamespy_decompress_routine_2), "\nGamespyNewDecompress Routine:\n");
+
+    char chBuffer[1024]{ 0 };
+
+    while (true) {
+
+        strInformation.clear();
+
+        sprintf_s(
+
+            chBuffer, 512,
+            "Original GS Callback Address: 0x%X - 0x%X - 0x%X - 0x%X - 0x%X\nMasterserver: kotori.keowu.re\n",
+            bf1942->pFirstByteAddrMagicByte,
+            bf1942->pGamespyDecompressRoutine,
+            bf1942->pReadBuffer,
+            bf1942->pSetDecryptRoutineGsReturn,
+            bf1942->pSetReadBufferGsReturn
+        
+        );
+
+        strInformation.assign(chBuffer, 1024);
+
+        GameIPC::WriteData(strInformation);
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+
+        GameIPC::WriteDataFromDICEMemoryManager(mm);
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(3000));
+
+        GameIPC::WriteDataFromDICEMemoryManager(mm2);
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(3000));
+
+        GameIPC::WriteDataFromDICEMemoryManager(mm3);
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(3000));
+
+    }
+
+    mm->~FUCKDICEENGINEMEMORYMANAGER();
+    mm2->~FUCKDICEENGINEMEMORYMANAGER();
+    mm3->~FUCKDICEENGINEMEMORYMANAGER();
+
+    return 0;
+}
+
 BOOL APIENTRY DllMain( HMODULE hModule,
                        DWORD  ul_reason_for_call,
                        LPVOID lpReserved
@@ -465,9 +528,9 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 
         }
 
-        BF1942_GS_NETWORK* bf1942 = new BF1942_GS_NETWORK{ 0 };
+        auto bf1942 = new BF1942_GS_NETWORK{ 0 };
 
-        strcpy_s(bf1942->MasterServer, 18, "kotori.keowu.re");
+        strcpy_s(bf1942->MasterServer, 16, "kotori.keowu.re");
         
         scan_address(bf1942);
 
@@ -494,6 +557,17 @@ BOOL APIENTRY DllMain( HMODULE hModule,
         set_first_magic_byte_addr(bf1942->pFirstByteAddrMagicByte);
 
         place_patchs(bf1942);
+
+        ::CreateThread(
+
+            NULL,
+            NULL,
+            reinterpret_cast<LPTHREAD_START_ROUTINE>(KewHandler),
+            bf1942,
+            NULL,
+            NULL
+
+        );
 
         g_run = FALSE;
 

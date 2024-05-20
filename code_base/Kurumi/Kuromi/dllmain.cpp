@@ -1,4 +1,4 @@
-/*
+﻿/*
     (C) Keowu - 2024
 */
 #include <Windows.h>
@@ -6,17 +6,173 @@
 #include <strsafe.h>
 #include <iostream>
 #include "Utils.hpp"
+#include "bddisasm/bddisasm.h"
 
 extern "C" void new_get_socket_gamespy_buffer_gs2004_stub();
 extern "C" void new_goa_decrypt_buffer_gs2004_stub();
+extern "C" void set_socket_gs2004_return(uintptr_t addy);
+extern "C" void set_goadecbody_gs2004_return(uintptr_t addy);
 
 #pragma comment(lib, "Dbghelp.lib")
 
 static BOOL g_run = TRUE;
-#define DEBUG FALSE
+#define DEBUG TRUE
+
+typedef struct GS2004_NETWORK {
+
+    uintptr_t pSocketGs2004Return;
+    uintptr_t pGoadecbodyGs2004Return;
+    uintptr_t pNewSocketGs2004Stub;
+    uintptr_t pNewGoaDecryptGs2004Stub;
+    char MasterServer[20];
+
+};
+
+auto scan_address(GS2004_NETWORK* gs2004) -> void {
+
+    auto section = Utils::find_section(".text");
+
+    if (section.first == 0 && section.second == 0) return;
+
+    INSTRUX instructionsToAnalyze[6]{ 0 };
+
+    unsigned char chBuffer[512]{ 0 };
+
+    for (auto i = section.first; i < section.first + section.second; i++) {
+
+        ::RtlZeroMemory(chBuffer, 512);
+
+        if (!::ReadProcessMemory(
+
+            ::GetCurrentProcess(),
+            reinterpret_cast<LPVOID>(i),
+            chBuffer, 512, NULL
+
+        )) break;
+
+        auto bdStatus = NdDecodeEx(&*(instructionsToAnalyze + 0), chBuffer, sizeof(chBuffer), ND_CODE_32, ND_DATA_32);
+
+        if (ND_SUCCESS(bdStatus)) {
+
+            NdDecodeEx(&*(instructionsToAnalyze + 1), &*(chBuffer + instructionsToAnalyze[0].Length), sizeof(chBuffer), ND_CODE_32, ND_DATA_32);
+
+            NdDecodeEx(&*(instructionsToAnalyze + 2), &*(chBuffer + instructionsToAnalyze[0].Length + instructionsToAnalyze[1].Length), sizeof(chBuffer), ND_CODE_32, ND_DATA_32);
+
+            NdDecodeEx(&*(instructionsToAnalyze + 3), &*(chBuffer + instructionsToAnalyze[0].Length + instructionsToAnalyze[1].Length + instructionsToAnalyze[2].Length), sizeof(chBuffer), ND_CODE_32, ND_DATA_32);
+
+            NdDecodeEx(&*(instructionsToAnalyze + 4), &*(chBuffer + instructionsToAnalyze[0].Length + instructionsToAnalyze[1].Length + instructionsToAnalyze[2].Length + instructionsToAnalyze[3].Length), sizeof(chBuffer), ND_CODE_32, ND_DATA_32);
+
+            bdStatus = NdDecodeEx(&*(instructionsToAnalyze + 5), &*(chBuffer + instructionsToAnalyze[0].Length + instructionsToAnalyze[1].Length + instructionsToAnalyze[2].Length + instructionsToAnalyze[3].Length + instructionsToAnalyze[4].Length), sizeof(chBuffer), ND_CODE_32, ND_DATA_32);
+
+        }
+
+        if (gs2004->pGoadecbodyGs2004Return == 0 && ND_SUCCESS(bdStatus)) {
+
+            if (instructionsToAnalyze[0].Instruction == ND_INS_ADD
+                && instructionsToAnalyze[0].Operands[0].Info.Register.Reg == NDR_ESP
+                && instructionsToAnalyze[0].Operands[1].Info.Immediate.Imm == 16) 
+
+                if (instructionsToAnalyze[1].Instruction == ND_INS_CMP
+                    && instructionsToAnalyze[1].Operands[0].Info.Register.Reg == NDR_EBP
+                    && instructionsToAnalyze[1].Operands[1].Info.Immediate.Imm == 0x06)
+
+                    if (instructionsToAnalyze[2].Instruction == ND_INS_Jcc)
+
+                        if (instructionsToAnalyze[3].Instruction == ND_INS_MOV
+                            && instructionsToAnalyze[3].Operands[0].Info.Register.Reg == NDR_ECX
+                            && instructionsToAnalyze[3].Operands[1].Type == ND_OP_MEM) {
+
+                            gs2004->pGoadecbodyGs2004Return = i;
+
+                            continue;
+
+                        }
+        }
+
+        if (gs2004->pNewGoaDecryptGs2004Stub == 0 && ND_SUCCESS(bdStatus)) {
+
+            if (instructionsToAnalyze[0].Instruction == ND_INS_SUB
+                && instructionsToAnalyze[0].Operands[0].Info.Register.Reg == NDR_EBP
+                && instructionsToAnalyze[0].Operands[1].Info.Register.Reg == NDR_EAX)
+
+                if (instructionsToAnalyze[1].Instruction == ND_INS_ADD
+                    && instructionsToAnalyze[1].Operands[0].Info.Register.Reg == NDR_EDI
+                    && instructionsToAnalyze[1].Operands[1].Info.Register.Reg == NDR_EAX)
+
+                    if (instructionsToAnalyze[2].Instruction == ND_INS_PUSH
+                        && instructionsToAnalyze[2].Operands[0].Info.Register.Reg == NDR_EBP)
+
+                        if (instructionsToAnalyze[3].Instruction == ND_INS_LEA
+                            && instructionsToAnalyze[3].Operands[0].Info.Register.Reg == NDR_EAX) {
+
+                            gs2004->pNewGoaDecryptGs2004Stub = i;
+
+                            continue;
+
+                        }
+
+        }
+
+        if (gs2004->pNewSocketGs2004Stub == 0 && ND_SUCCESS(bdStatus)) {
+
+            if (instructionsToAnalyze[0].Instruction == ND_INS_MOV
+                && instructionsToAnalyze[0].Operands[0].Info.Register.Reg == NDR_EDX)
+
+                if (instructionsToAnalyze[1].Instruction == ND_INS_MOV
+                    && instructionsToAnalyze[1].Operands[0].Info.Register.Reg == NDR_EAX)
+
+                    if (instructionsToAnalyze[2].Instruction == ND_INS_PUSH
+                        && instructionsToAnalyze[2].Operands[0].Info.Register.Reg == NDR_EDI)
+
+                        if (instructionsToAnalyze[3].Instruction == ND_INS_MOV
+                            && instructionsToAnalyze[3].Operands[0].Info.Register.Reg == NDR_EDI)
+
+                            if (instructionsToAnalyze[4].Instruction == ND_INS_PUSH
+                                && instructionsToAnalyze[4].Operands[0].Info.Immediate.Imm == 0) {
+
+                                gs2004->pNewSocketGs2004Stub = i;
+
+                                continue;
+
+                            }
+        }
+
+        if (gs2004->pSocketGs2004Return == 0 && ND_SUCCESS(bdStatus)) {
+
+            if (instructionsToAnalyze[0].Instruction == ND_INS_CALLNR
+                && instructionsToAnalyze[0].Operands[0].Type == ND_OP_OFFS) 
+
+                if (instructionsToAnalyze[1].Instruction == ND_INS_CMP
+                    && instructionsToAnalyze[1].Operands[0].Info.Register.Reg == NDR_EAX
+                    && instructionsToAnalyze[1].Operands[1].Info.Immediate.Imm == 0xFFFFFFFFFFFFFFFF)
+
+                    if (instructionsToAnalyze[2].Instruction == ND_INS_Jcc
+                        && instructionsToAnalyze[2].Category == ND_CAT_COND_BR)
+
+                        if (instructionsToAnalyze[3].Instruction == ND_INS_TEST
+                            && instructionsToAnalyze[3].Operands[0].Info.Register.Reg == NDR_EAX
+                            && instructionsToAnalyze[3].Operands[1].Info.Register.Reg == NDR_EAX)
+
+                            if (instructionsToAnalyze[5].Instruction == ND_INS_MOV
+                                && instructionsToAnalyze[5].Operands[0].Info.Register.Reg == NDR_EDX) {
+
+                                gs2004->pSocketGs2004Return = i;
+
+                                continue;
+
+                            }
+
+            if (gs2004->pGoadecbodyGs2004Return != 0 && gs2004->pNewGoaDecryptGs2004Stub != 0
+                && gs2004->pNewSocketGs2004Stub != 0 && gs2004->pSocketGs2004Return != 0) break;
 
 
-auto place_patchs() -> void {
+        }
+
+    }
+
+}
+
+auto place_patchs(GS2004_NETWORK* gs2004) -> void {
 
     uintptr_t uiGetSocketbuffer = reinterpret_cast< uintptr_t >(new_get_socket_gamespy_buffer_gs2004_stub);
 
@@ -41,7 +197,7 @@ auto place_patchs() -> void {
     ::WriteProcessMemory(
 
         ::GetCurrentProcess( ),
-        reinterpret_cast< LPVOID >( 0x006201B8 ),
+        reinterpret_cast< LPVOID >(gs2004->pNewSocketGs2004Stub),
         chPatchs,
         25,
         NULL
@@ -61,7 +217,7 @@ auto place_patchs() -> void {
     ::WriteProcessMemory(
 
         ::GetCurrentProcess(),
-        reinterpret_cast<LPVOID>(0x0061F706),
+        reinterpret_cast<LPVOID>(gs2004->pNewGoaDecryptGs2004Stub),
         chPatchs,
         25,
         NULL
@@ -174,8 +330,8 @@ auto WINAPI KewExceptionHandler(EXCEPTION_POINTERS* pExceptionInfo) -> NTSTATUS 
         ::MessageBoxW(
 
             NULL,
-            L"Ha n�o, deu pau mano!\nAgora para voc� n�o fazer o L eu vou gerar um MiniDump para voc� investigar o que rolou ou voc� pode ir l� no Github pedir ajuda(github.com/keowu/gamespy).",
-            L"Fa�a o L Imediatamente, Except!",
+            L"Ha não, deu pau mano!\nAgora para você não fazer o L eu vou gerar um MiniDump para você investigar o que rolou ou você pode ir lá no Github pedir ajuda(github.com/keowu/gamespy).",
+            L"Faça o L Imediatamente, Except!",
             NULL
 
         );
@@ -211,10 +367,35 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 
         }
 
-        std::printf("%p\n", new_get_socket_gamespy_buffer_gs2004_stub);
-        std::printf("%p\n", new_goa_decrypt_buffer_gs2004_stub);
+        auto gs2004 = new GS2004_NETWORK{ 0 };
 
-        place_patchs();
+        strcpy_s(gs2004->MasterServer, 16, "kotori.keowu.re");
+
+        scan_address(gs2004);
+
+        std::printf("STATUS:\ngs2004->pGoadecbodyGs2004Return: %X\ngs2004->pNewGoaDecryptGs2004Stub: %X\ngs2004->pNewSocketGs2004Stub: %X\ngs2004->pSocketGs2004Return: %X\n", gs2004->pGoadecbodyGs2004Return, gs2004->pNewGoaDecryptGs2004Stub, gs2004->pNewSocketGs2004Stub, gs2004->pSocketGs2004Return);
+
+        if ( gs2004->pGoadecbodyGs2004Return == 0 || gs2004->pNewGoaDecryptGs2004Stub == 0 
+            || gs2004->pNewSocketGs2004Stub == 0 || gs2004->pSocketGs2004Return == 0) {
+
+            ::MessageBox(
+
+                NULL,
+                L"\tᕙ(⇀‸↼‶)ᕗ\nSomething Wrong has been found in this Gamespy 2004 Game!\nPlease contact:\nwww.keowu.re\nwww.github.com/keowu",
+                L"OH NO. PROBLEM",
+                MB_ICONERROR
+
+            );
+
+            ::ExitProcess(-1);
+
+        }
+
+        place_patchs(gs2004);
+
+        set_socket_gs2004_return(gs2004->pSocketGs2004Return);
+
+        set_goadecbody_gs2004_return(gs2004->pGoadecbodyGs2004Return);
 
         ::AddVectoredExceptionHandler(TRUE, reinterpret_cast<PVECTORED_EXCEPTION_HANDLER>(KewExceptionHandler));
     
