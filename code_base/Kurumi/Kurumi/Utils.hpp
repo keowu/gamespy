@@ -91,10 +91,6 @@ namespace Utils {
 
         pAddy += ix.Operands[0].Info.Immediate.Imm + 5; // + 5 JMP PREFIX
 
-        auto chStr2 = new char[ND_MIN_BUF_SIZE] {};
-
-        NdToText(&ix, 0, ND_MIN_BUF_SIZE, chStr2);
-
         std::size_t szProcedure{ 0 };
 
         while (*reinterpret_cast<unsigned char*>(pAddy + szProcedure) != 0xC3) ++szProcedure;

@@ -1,4 +1,5 @@
-﻿using System.Net;
+﻿using System;
+using System.Net;
 using System.Net.Sockets;
 using System.Text;
 
@@ -109,8 +110,21 @@ namespace GamespyMasterServerTCP {
 
         static async Task HandleGS2004Clients(Socket clientSocket) {
 
-            payloadGS2004Bytes = File.ReadAllBytes(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "payload2.bin"));
-            await clientSocket.SendAsync(new ArraySegment<byte>(payloadGS2004Bytes), SocketFlags.None);
+            var buffer = new byte[65535];
+            var receivedBytes = clientSocket.Receive(new ArraySegment<byte>(buffer), SocketFlags.None);
+            var receivedMessage = Encoding.UTF8.GetString(buffer, 0, receivedBytes);
+            if (receivedMessage.Contains("bfvietnam")) {
+
+                //PAYLOAD 3 DO NOT HAVE A PARSER YET, TODO: CREATE A PARSE TO INSERT FRAMES BASED ON 0X15 FLAG ENDING WITH 0X00 0XFFFFFFF MAGIC
+                payloadGS2004Bytes = File.ReadAllBytes(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "payload3.bin"));
+                await clientSocket.SendAsync(new ArraySegment<byte>(payloadGS2004Bytes), SocketFlags.None);
+
+            }else {
+
+                payloadGS2004Bytes = File.ReadAllBytes(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "payload2.bin"));
+                await clientSocket.SendAsync(new ArraySegment<byte>(payloadGS2004Bytes), SocketFlags.None);
+
+            }
 
             Console.WriteLine($"New Client {clientSocket.RemoteEndPoint} connected to Gamespy2004.");
         }

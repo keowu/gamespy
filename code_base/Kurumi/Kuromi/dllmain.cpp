@@ -8,10 +8,17 @@
 #include "Utils.hpp"
 #include "bddisasm/bddisasm.h"
 
-extern "C" void new_get_socket_gamespy_buffer_gs2004_stub();
-extern "C" void new_goa_decrypt_buffer_gs2004_stub();
-extern "C" void set_socket_gs2004_return(uintptr_t addy);
-extern "C" void set_goadecbody_gs2004_return(uintptr_t addy);
+extern "C" void new_get_socket_gamespy_buffer_gs2004_stub_bungie();
+extern "C" void new_goa_decrypt_buffer_gs2004_stub_bungie();
+extern "C" void new_get_socket_gamespy_buffer_gs2004_stub_ea();
+extern "C" void new_goa_decrypt_buffer_gs2004_stub_ea();
+extern "C" DWORD g_socket_gs2004_return;
+extern "C" DWORD g_goadecbody_gs2004_return;
+extern "C" DWORD g_gs2004Recv;
+
+DWORD g_socket_gs2004_return;
+DWORD g_goadecbody_gs2004_return;
+DWORD g_gs2004Recv{ 0 };
 
 #pragma comment(lib, "Dbghelp.lib")
 
@@ -20,11 +27,10 @@ static BOOL g_run = TRUE;
 
 typedef struct GS2004_NETWORK {
 
-    uintptr_t pSocketGs2004Return;
-    uintptr_t pGoadecbodyGs2004Return;
     uintptr_t pNewSocketGs2004Stub;
     uintptr_t pNewGoaDecryptGs2004Stub;
     char MasterServer[20];
+    BOOL isVariantV2;
 
 };
 
@@ -66,7 +72,83 @@ auto scan_address(GS2004_NETWORK* gs2004) -> void {
 
         }
 
-        if (gs2004->pGoadecbodyGs2004Return == 0 && ND_SUCCESS(bdStatus)) {
+        if (g_goadecbody_gs2004_return == 0 && ND_SUCCESS(bdStatus) && gs2004->isVariantV2 == TRUE) {
+
+            //0x005DD4B3
+            if (instructionsToAnalyze[0].Instruction == ND_INS_CMP
+                && instructionsToAnalyze[0].Operands[0].Info.Register.Reg == NDR_EBP
+                && instructionsToAnalyze[0].Operands[1].Info.Immediate.Imm == 06)
+
+                if (instructionsToAnalyze[1].Instruction == ND_INS_Jcc)
+
+                    if (instructionsToAnalyze[2].Instruction == ND_INS_MOV
+                        && instructionsToAnalyze[2].Operands[0].Info.Register.Reg == NDR_EAX)
+
+                        if (instructionsToAnalyze[3].Instruction == ND_INS_MOV
+                            && instructionsToAnalyze[3].Operands[0].Info.Register.Reg == NDR_ECX)
+
+
+                            if (instructionsToAnalyze[4].Instruction == ND_INS_MOV) {
+
+                                g_goadecbody_gs2004_return = i;
+
+                                continue;
+                            }
+        }
+
+        if (gs2004->pNewGoaDecryptGs2004Stub == 0 && ND_SUCCESS(bdStatus) && gs2004->isVariantV2 == TRUE) {
+
+            //005DD497
+            if (instructionsToAnalyze[0].Instruction == ND_INS_ADD
+                && instructionsToAnalyze[0].Operands[0].Info.Register.Reg == NDR_EDI
+                && instructionsToAnalyze[0].Operands[1].Info.Register.Reg == NDR_EAX)
+
+                if (instructionsToAnalyze[1].Instruction == ND_INS_SUB
+                    && instructionsToAnalyze[1].Operands[0].Info.Register.Reg == NDR_EBP
+                    && instructionsToAnalyze[1].Operands[1].Info.Register.Reg == NDR_EAX)
+
+                    if (instructionsToAnalyze[2].Instruction == ND_INS_PUSH
+                        && instructionsToAnalyze[2].Operands[0].Info.Register.Reg == NDR_EBP)
+
+                        if (instructionsToAnalyze[3].Instruction == ND_INS_LEA
+                            && instructionsToAnalyze[3].Operands[0].Info.Register.Reg == NDR_ECX) {
+
+                            gs2004->pNewGoaDecryptGs2004Stub = i;
+
+                            continue;
+
+                        }
+
+        }
+        
+
+        if (gs2004->pNewSocketGs2004Stub == 0 && ND_SUCCESS(bdStatus) && gs2004->isVariantV2 == TRUE) {
+
+            //005DDF74
+            if (instructionsToAnalyze[0].Instruction == ND_INS_MOV
+                && instructionsToAnalyze[0].Operands[0].Info.Register.Reg == NDR_ECX)
+
+                if (instructionsToAnalyze[1].Instruction == ND_INS_MOV
+                    && instructionsToAnalyze[1].Operands[0].Info.Register.Reg == NDR_EDX)
+
+                    if (instructionsToAnalyze[2].Instruction == ND_INS_PUSH
+                        && instructionsToAnalyze[2].Operands[0].Info.Register.Reg == NDR_EDI)
+
+                        if (instructionsToAnalyze[3].Instruction == ND_INS_MOV
+                            && instructionsToAnalyze[3].Operands[0].Info.Register.Reg == NDR_EDI)
+
+                            if (instructionsToAnalyze[4].Instruction == ND_INS_PUSH
+                                && instructionsToAnalyze[4].Operands[0].Info.Immediate.Imm == 0) {
+
+                                gs2004->pNewSocketGs2004Stub = i;
+
+                                continue;
+
+                            }
+
+        }
+
+        if (g_goadecbody_gs2004_return == 0 && ND_SUCCESS(bdStatus) && gs2004->isVariantV2 == FALSE) {
 
             if (instructionsToAnalyze[0].Instruction == ND_INS_ADD
                 && instructionsToAnalyze[0].Operands[0].Info.Register.Reg == NDR_ESP
@@ -82,14 +164,14 @@ auto scan_address(GS2004_NETWORK* gs2004) -> void {
                             && instructionsToAnalyze[3].Operands[0].Info.Register.Reg == NDR_ECX
                             && instructionsToAnalyze[3].Operands[1].Type == ND_OP_MEM) {
 
-                            gs2004->pGoadecbodyGs2004Return = i;
+                            g_goadecbody_gs2004_return = i;
 
                             continue;
 
                         }
         }
 
-        if (gs2004->pNewGoaDecryptGs2004Stub == 0 && ND_SUCCESS(bdStatus)) {
+        if (gs2004->pNewGoaDecryptGs2004Stub == 0 && ND_SUCCESS(bdStatus) && gs2004->isVariantV2 == FALSE) {
 
             if (instructionsToAnalyze[0].Instruction == ND_INS_SUB
                 && instructionsToAnalyze[0].Operands[0].Info.Register.Reg == NDR_EBP
@@ -113,7 +195,7 @@ auto scan_address(GS2004_NETWORK* gs2004) -> void {
 
         }
 
-        if (gs2004->pNewSocketGs2004Stub == 0 && ND_SUCCESS(bdStatus)) {
+        if (gs2004->pNewSocketGs2004Stub == 0 && ND_SUCCESS(bdStatus) && gs2004->isVariantV2 == FALSE) {
 
             if (instructionsToAnalyze[0].Instruction == ND_INS_MOV
                 && instructionsToAnalyze[0].Operands[0].Info.Register.Reg == NDR_EDX)
@@ -137,36 +219,42 @@ auto scan_address(GS2004_NETWORK* gs2004) -> void {
                             }
         }
 
-        if (gs2004->pSocketGs2004Return == 0 && ND_SUCCESS(bdStatus)) {
+        if (g_socket_gs2004_return == 0 && ND_SUCCESS(bdStatus) && gs2004->pNewSocketGs2004Stub != 0) {
 
-            if (instructionsToAnalyze[0].Instruction == ND_INS_CALLNR
-                && instructionsToAnalyze[0].Operands[0].Type == ND_OP_OFFS) 
 
-                if (instructionsToAnalyze[1].Instruction == ND_INS_CMP
-                    && instructionsToAnalyze[1].Operands[0].Info.Register.Reg == NDR_EAX
-                    && instructionsToAnalyze[1].Operands[1].Info.Immediate.Imm == 0xFFFFFFFFFFFFFFFF)
+            //Searching for after recv call(Using a universal way)
+            INSTRUX instruction{ 0 };
+            auto z = i - 1;
 
-                    if (instructionsToAnalyze[2].Instruction == ND_INS_Jcc
-                        && instructionsToAnalyze[2].Category == ND_CAT_COND_BR)
+            while (instruction.Instruction != ND_INS_CALLNR) {
 
-                        if (instructionsToAnalyze[3].Instruction == ND_INS_TEST
-                            && instructionsToAnalyze[3].Operands[0].Info.Register.Reg == NDR_EAX
-                            && instructionsToAnalyze[3].Operands[1].Info.Register.Reg == NDR_EAX)
+                z += instruction.Length;
 
-                            if (instructionsToAnalyze[5].Instruction == ND_INS_MOV
-                                && instructionsToAnalyze[5].Operands[0].Info.Register.Reg == NDR_EDX) {
+                ::RtlZeroMemory(chBuffer, 512);
 
-                                gs2004->pSocketGs2004Return = i;
+                if (!::ReadProcessMemory(
 
-                                continue;
+                    ::GetCurrentProcess(),
+                    reinterpret_cast<LPVOID>(z),
+                    chBuffer, 512, NULL
 
-                            }
+                )) break;
 
-            if (gs2004->pGoadecbodyGs2004Return != 0 && gs2004->pNewGoaDecryptGs2004Stub != 0
-                && gs2004->pNewSocketGs2004Stub != 0 && gs2004->pSocketGs2004Return != 0) break;
+                NdDecodeEx(&instruction, &*(chBuffer), sizeof(chBuffer), ND_CODE_32, ND_DATA_32);
+            }
+
+            if (gs2004->isVariantV2)
+                g_socket_gs2004_return = z + 5; // Next instruction after call
+            else
+                g_socket_gs2004_return = z;
+
+            continue;
 
 
         }
+
+        if (g_goadecbody_gs2004_return != 0 && gs2004->pNewGoaDecryptGs2004Stub != 0
+            && gs2004->pNewSocketGs2004Stub != 0 && g_socket_gs2004_return != 0) break;
 
     }
 
@@ -174,7 +262,7 @@ auto scan_address(GS2004_NETWORK* gs2004) -> void {
 
 auto place_patchs(GS2004_NETWORK* gs2004) -> void {
 
-    uintptr_t uiGetSocketbuffer = reinterpret_cast< uintptr_t >(new_get_socket_gamespy_buffer_gs2004_stub);
+    uintptr_t uiGetSocketbuffer = reinterpret_cast< uintptr_t >(gs2004->isVariantV2 ? new_get_socket_gamespy_buffer_gs2004_stub_ea : new_get_socket_gamespy_buffer_gs2004_stub_bungie);
 
     unsigned char chPatchs[25]{
 
@@ -204,7 +292,7 @@ auto place_patchs(GS2004_NETWORK* gs2004) -> void {
 
     );
 
-    uiGetSocketbuffer = reinterpret_cast<uintptr_t>(new_goa_decrypt_buffer_gs2004_stub);
+    uiGetSocketbuffer = reinterpret_cast<uintptr_t>(gs2004->isVariantV2 ? new_goa_decrypt_buffer_gs2004_stub_ea : new_goa_decrypt_buffer_gs2004_stub_bungie);
 
     std::memcpy(
 
@@ -369,14 +457,19 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 
         auto gs2004 = new GS2004_NETWORK{ 0 };
 
+        if (Utils::get_process_name().find("bfvietnam") != std::string::npos) gs2004->isVariantV2 = TRUE;
+        else gs2004->isVariantV2 = FALSE;
+
         strcpy_s(gs2004->MasterServer, 16, "kotori.keowu.re");
 
         scan_address(gs2004);
 
-        std::printf("STATUS:\ngs2004->pGoadecbodyGs2004Return: %X\ngs2004->pNewGoaDecryptGs2004Stub: %X\ngs2004->pNewSocketGs2004Stub: %X\ngs2004->pSocketGs2004Return: %X\n", gs2004->pGoadecbodyGs2004Return, gs2004->pNewGoaDecryptGs2004Stub, gs2004->pNewSocketGs2004Stub, gs2004->pSocketGs2004Return);
+        g_gs2004Recv = reinterpret_cast<DWORD>(::GetProcAddress(::LoadLibraryA("Ws2_32.dll"), "recv"));
 
-        if ( gs2004->pGoadecbodyGs2004Return == 0 || gs2004->pNewGoaDecryptGs2004Stub == 0 
-            || gs2004->pNewSocketGs2004Stub == 0 || gs2004->pSocketGs2004Return == 0) {
+        std::printf("GS2004 and GS2004V2\nSTATUS:\ng_goadecbody_gs2004_return: %X\ngs2004->pNewGoaDecryptGs2004Stub: %X\ngs2004->pNewSocketGs2004Stub: %X\ng_socket_gs2004_return: %X\ngs2004->isVariantV2: %X\ng_gs2004Recv: %X\n", g_goadecbody_gs2004_return, gs2004->pNewGoaDecryptGs2004Stub, gs2004->pNewSocketGs2004Stub, g_socket_gs2004_return, gs2004->isVariantV2, g_gs2004Recv);
+
+        if ( g_goadecbody_gs2004_return == 0 || gs2004->pNewGoaDecryptGs2004Stub == 0
+            || gs2004->pNewSocketGs2004Stub == 0 || g_socket_gs2004_return == 0 ) {
 
             ::MessageBox(
 
@@ -392,10 +485,6 @@ BOOL APIENTRY DllMain( HMODULE hModule,
         }
 
         place_patchs(gs2004);
-
-        set_socket_gs2004_return(gs2004->pSocketGs2004Return);
-
-        set_goadecbody_gs2004_return(gs2004->pGoadecbodyGs2004Return);
 
         ::AddVectoredExceptionHandler(TRUE, reinterpret_cast<PVECTORED_EXCEPTION_HANDLER>(KewExceptionHandler));
     

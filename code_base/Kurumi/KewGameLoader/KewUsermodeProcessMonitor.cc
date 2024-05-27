@@ -193,7 +193,10 @@ auto STDMETHODCALLTYPE KewUsermodeProcessMonitor::Indicate(
                     InjectModule( processID );
 
                 if ( processName.find( L"halo" ) != std::wstring::npos )
-                    InjectModule( processID, true );
+                    InjectModule( processID, 1 );
+
+                if (processName.find(L"bfvietnam") != std::wstring::npos)
+                    InjectModule( processID, 2 );
 
             }
         }

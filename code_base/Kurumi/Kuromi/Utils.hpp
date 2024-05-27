@@ -21,4 +21,13 @@ namespace Utils {
         return std::make_pair(textVa, textSize);
     }
 
+    auto get_process_name() -> std::string {
+
+        char chProcessName[MAX_PATH]{ 0 };
+
+        ::GetModuleFileNameA(NULL, chProcessName, MAX_PATH);
+
+        return std::string(chProcessName);
+    }
+
 };

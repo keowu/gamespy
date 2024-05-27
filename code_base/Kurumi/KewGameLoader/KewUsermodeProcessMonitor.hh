@@ -63,7 +63,7 @@ public:
 static auto WINAPI InjectModule(
     
     DWORD dwPid,
-    bool isKuromi = 0
+    int isKuromi = 0
 
 ) -> void {
 
@@ -182,8 +182,10 @@ static auto WINAPI InjectModule(
     );
 
     //TODO: Battlefield Vietnam Window
-     if ( isKuromi )
+     if ( isKuromi == 1 )
          g_gameWindow = std::make_shared< std::string >( "Halo" );
+     else if (isKuromi == 2)
+         g_gameWindow = std::make_shared< std::string >("Battlefield Vietnam");
      else
          g_gameWindow = std::make_shared< std::string >( "BF1942 (Ver: Henk, 23 Feb. 2022)" );
 
