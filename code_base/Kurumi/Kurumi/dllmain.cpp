@@ -20,17 +20,18 @@ static BOOL g_run = TRUE;
 extern "C" void fake_frames_to_decrypt();
 extern "C" void replaced_read_buffer();
 extern "C" void fake_gamespy_decompress_routine_2();
-extern "C" void set_read_buffer_gs_return(uintptr_t addr);
-extern "C" void set_decrypt_routine_gs_return(uintptr_t addr);
-extern "C" void set_first_magic_byte_addr(uintptr_t addr);
+extern "C" DWORD g_old_first_byte_addr;
+extern "C" DWORD g_read_buffer_gs_return;
+extern "C" DWORD g_decrypt_routine_gs_return;
+
+DWORD g_old_first_byte_addr{ 0 };
+DWORD g_read_buffer_gs_return{ 0 };
+DWORD g_decrypt_routine_gs_return{ 0 };
 
 typedef struct BF1942_GS_NETWORK {
 
-    uintptr_t pFirstByteAddrMagicByte;
     uintptr_t pReadBuffer;
     uintptr_t pGamespyDecompressRoutine;
-    uintptr_t pSetReadBufferGsReturn;
-    uintptr_t pSetDecryptRoutineGsReturn;
     char MasterServer[20];
 
 };
@@ -123,7 +124,7 @@ auto scan_address( BF1942_GS_NETWORK* bf1942 ) -> void {
 
                         }
 
-        if (bf1942->pSetReadBufferGsReturn == 0 && ND_SUCCESS(bdStatus)) 
+        if (g_read_buffer_gs_return == 0 && ND_SUCCESS(bdStatus))
 
             if (instructionsToAnalyze[0].Instruction == ND_INS_CALLNR
                 && instructionsToAnalyze[0].Operands[0].Type == ND_OP_OFFS)
@@ -140,12 +141,12 @@ auto scan_address( BF1942_GS_NETWORK* bf1942 ) -> void {
 
                         if (instructionsToAnalyze[3].Instruction == ND_INS_CMP) {
 
-                            bf1942->pSetReadBufferGsReturn = i;
+                            g_read_buffer_gs_return = i;
 
                             continue;
                         }
 
-        if (bf1942->pSetDecryptRoutineGsReturn == 0 && ND_SUCCESS(bdStatus))
+        if (g_decrypt_routine_gs_return == 0 && ND_SUCCESS(bdStatus))
             if ( instructionsToAnalyze[0].Instruction == ND_INS_MOV
                  && instructionsToAnalyze[0].Operands[0].Type == ND_OP_REG
                  && instructionsToAnalyze[0].Operands[0].Info.Register.Reg == NDR_EAX
@@ -164,12 +165,12 @@ auto scan_address( BF1942_GS_NETWORK* bf1942 ) -> void {
                             && instructionsToAnalyze[3].Operands[1].Type == ND_OP_REG
                             && instructionsToAnalyze[3].Operands[1].Info.Register.Reg == NDR_EDI) {
 
-                            bf1942->pSetDecryptRoutineGsReturn = i;
+                            g_decrypt_routine_gs_return = i;
 
                             continue;
                         }
 
-        if ( bf1942->pFirstByteAddrMagicByte == 0 && ND_SUCCESS(bdStatus) )
+        if ( g_old_first_byte_addr == 0 && ND_SUCCESS(bdStatus) )
             if ( instructionsToAnalyze[0].Instruction == ND_INS_MOVSX 
                 && instructionsToAnalyze[0].Operands[1].Type == ND_OP_MEM )
                 if ( instructionsToAnalyze[1].Instruction == ND_INS_XOR
@@ -180,7 +181,7 @@ auto scan_address( BF1942_GS_NETWORK* bf1942 ) -> void {
                         && instructionsToAnalyze[2].Operands[1].Type == ND_OP_REG )
                         if ( instructionsToAnalyze[3].Instruction == ND_INS_Jcc ) {
 
-                            bf1942->pFirstByteAddrMagicByte = instructionsToAnalyze[0].Operands[1].Info.Memory.Disp;
+                            g_old_first_byte_addr = instructionsToAnalyze[0].Operands[1].Info.Memory.Disp;
 
                             continue;
                         }
@@ -188,8 +189,8 @@ auto scan_address( BF1942_GS_NETWORK* bf1942 ) -> void {
 
 
         if (bf1942->pReadBuffer != 0 && bf1942->pGamespyDecompressRoutine != 0 
-            && bf1942->pSetReadBufferGsReturn != 0 && bf1942->pSetDecryptRoutineGsReturn != 0
-            && bf1942->pFirstByteAddrMagicByte != 0) break;    
+            && g_read_buffer_gs_return != 0 && g_decrypt_routine_gs_return != 0
+            && g_old_first_byte_addr != 0) break;
 
     }
 
@@ -234,50 +235,26 @@ auto scan_address( BF1942_GS_NETWORK* bf1942 ) -> void {
 
 }
 
-auto place_patchs(BF1942_GS_NETWORK* bf1942) -> void {
-
-    /*
-        First patch
-            This patch will be replace the readed buffer of recv.
-            will store into our own buffer and then save a fake framebuffer into the original buffer to decrypt normaly
-            and then just read correct data on our buffer and the old one do all decrypt stuff
-    */
+auto place_patchs( BF1942_GS_NETWORK* bf1942 ) -> void {
 
     uintptr_t uiReplacedFirstPatch = reinterpret_cast< uintptr_t >( replaced_read_buffer );
 
-    unsigned char chFirstPatch[27] = {
+    unsigned char chFirstPatch[ 27 ] = {
 
         0x68, 0x00, 0x00, 0x00, 0x00, // push address_of_replaced_read_buffer
         0xC3, // ret
-        0x90,
-        0x90,
-        0x90,
-        0x90,
-        0x90,
-        0x90,
-        0x90,
-        0x90,
-        0x90,
-        0x90,
-        0x90,
-        0x90,
-        0x90,
-        0x90,
-        0x90,
-        0x90,
-        0x90,
-        0x90,
-        0x90,
-        0x90,
-        0x90
+        0x90, 0x90, 0x90, 0x90, 0x90, 0x90,
+        0x90, 0x90, 0x90, 0x90, 0x90, 0x90,
+        0x90, 0x90, 0x90, 0x90, 0x90, 0x90,
+        0x90, 0x90, 0x90
 
     };
 
     std::memcpy(
         
-        &*(chFirstPatch + 1),
+        &*( chFirstPatch + 1 ),
         &uiReplacedFirstPatch,
-        sizeof(uintptr_t)
+        sizeof( uintptr_t )
     
     );
 
@@ -291,23 +268,12 @@ auto place_patchs(BF1942_GS_NETWORK* bf1942) -> void {
     
     );
 
-    /*
-        The second patch will replace before the gamespy decompress 2. and will call it from another place and replace the original buffer with
-        by the decrypted buffer.
-    */
-    unsigned char chSecondPatch[15] = {
+    unsigned char chSecondPatch[ 15 ] = {
 
         0x68, 0x00, 0x00, 0x00, 0x00, //push address_of_replaced_read_buffer
         0xC3, // ret
-        0x90,
-        0x90,
-        0x90,
-        0x90,
-        0x90,
-        0x90,
-        0x90,
-        0x90,
-        0x90
+        0x90, 0x90, 0x90, 0x90, 0x90, 0x90,
+        0x90, 0x90, 0x90
 
     };
 
@@ -315,136 +281,22 @@ auto place_patchs(BF1942_GS_NETWORK* bf1942) -> void {
 
     std::memcpy(
         
-        &*(chSecondPatch + 1),
+        &*( chSecondPatch + 1 ),
         &uiReplacedSecondPatch,
-        sizeof(uintptr_t)
+        sizeof( uintptr_t )
     
     );
 
     ::WriteProcessMemory(
         
         ::GetCurrentProcess( ),
-        reinterpret_cast<void*>( bf1942->pGamespyDecompressRoutine ),
+        reinterpret_cast< void* >( bf1942->pGamespyDecompressRoutine ),
         chSecondPatch,
         15,
         NULL
     
     );
 
-}
-
-auto WINAPI KewExceptionHandler(EXCEPTION_POINTERS* pExceptionInfo) -> NTSTATUS {
-
-    //Generating a MiniDump
-    WCHAR wchPath[MAX_PATH]{ 0 };
-    WCHAR wchFileName[MAX_PATH]{ 0 };
-
-    SYSTEMTIME stLocalTime;
-    MINIDUMP_EXCEPTION_INFORMATION ExpParam;
-
-    GetLocalTime(
-        
-        &stLocalTime
-    
-    );
-
-    GetTempPath(
-        
-        MAX_PATH,
-        wchPath
-    
-    );
-
-    StringCchPrintf(
-        
-        wchFileName,
-        MAX_PATH,
-        L"%s%s",
-        wchPath,
-        L"KurumiBF1942"
-    
-    );
-    
-    CreateDirectory(
-        
-        wchFileName,
-        NULL
-    
-    );
-
-    StringCchPrintf(
-        
-        wchFileName,
-        MAX_PATH,
-        L"%s%s\\%s-%04d%02d%02d-%02d%02d%02d-%ld-%ld.dmp",
-        wchPath,
-        L"KurumiBF1942",
-        L"v1.1",
-        stLocalTime.wYear,
-        stLocalTime.wMonth,
-        stLocalTime.wDay,
-        stLocalTime.wHour,
-        stLocalTime.wMinute,
-        stLocalTime.wSecond,
-        GetCurrentProcessId( ),
-        GetCurrentThreadId( )
-    
-    );
-
-    auto hDumpFile = CreateFile(
-        
-        wchFileName,
-        GENERIC_READ | GENERIC_WRITE,
-        FILE_SHARE_WRITE | FILE_SHARE_READ,
-        0,
-        CREATE_ALWAYS,
-        0,
-        0
-    
-    );
-
-    ExpParam.ThreadId = GetCurrentThreadId( );
-    ExpParam.ExceptionPointers = pExceptionInfo;
-    ExpParam.ClientPointers = TRUE;
-
-    auto bMiniDumpSuccessful = MiniDumpWriteDump(
-        
-        GetCurrentProcess(),
-        GetCurrentProcessId(),
-        hDumpFile,
-        MiniDumpWithDataSegs,
-        &ExpParam,
-        NULL,
-        NULL
-    
-    );
-
-    // This verification is just for a small fun with some brazilians!
-    if (
-        PRIMARYLANGID(
-            LANGIDFROMLCID( ::GetUserDefaultLCID( ) ) ) == LANG_PORTUGUESE
-        && SUBLANGID(
-            LANGIDFROMLCID( ::GetUserDefaultLCID( ) ) ) == SUBLANG_PORTUGUESE_BRAZILIAN
-        )
-        ::MessageBoxW(
-
-            NULL,
-            L"Ha não, deu pau mano!\nAgora para você não fazer o L eu vou gerar um MiniDump para você investigar o que rolou ou você pode ir lá no Github pedir ajuda(github.com/keowu/gamespy).",
-            L"Faça o L Imediatamente, Except!",
-            NULL
-
-        );
-    else
-        ::MessageBoxW(
-        
-            NULL,
-            L"Bro something goes really bad.\nWe are creating a MiniDump so you can investigate it or open a issue on github asking for help(github.com/keowu/gamespy).",
-            L"Oh no, Except!",
-            NULL
-    
-        );
-
-    return !TerminateProcess(::GetCurrentProcess(), pExceptionInfo->ExceptionRecord->ExceptionCode);
 }
 
 auto WINAPI KewHandler(PVOID arg) -> DWORD {
@@ -474,11 +326,11 @@ auto WINAPI KewHandler(PVOID arg) -> DWORD {
 
             chBuffer, 512,
             "Original GS Callback Address: 0x%X - 0x%X - 0x%X - 0x%X - 0x%X\nMasterserver: kotori.keowu.re\n",
-            bf1942->pFirstByteAddrMagicByte,
+            g_old_first_byte_addr,
             bf1942->pGamespyDecompressRoutine,
             bf1942->pReadBuffer,
-            bf1942->pSetDecryptRoutineGsReturn,
-            bf1942->pSetReadBufferGsReturn
+            g_decrypt_routine_gs_return,
+            g_read_buffer_gs_return
         
         );
 
@@ -502,9 +354,9 @@ auto WINAPI KewHandler(PVOID arg) -> DWORD {
 
     }
 
-    mm->~FUCKDICEENGINEMEMORYMANAGER();
-    mm2->~FUCKDICEENGINEMEMORYMANAGER();
-    mm3->~FUCKDICEENGINEMEMORYMANAGER();
+    mm->~DiceEngineMemoryManagerSimple();
+    mm2->~DiceEngineMemoryManagerSimple();
+    mm3->~DiceEngineMemoryManagerSimple();
 
     return 0;
 }
@@ -518,7 +370,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 
         ::DisableThreadLibraryCalls( hModule );
 
-        ::AddVectoredExceptionHandler( TRUE, reinterpret_cast< PVECTORED_EXCEPTION_HANDLER >( KewExceptionHandler ) );
+        ::AddVectoredExceptionHandler( TRUE, reinterpret_cast< PVECTORED_EXCEPTION_HANDLER >( Utils::KewExceptionHandler ) );
 
         if (DEBUG) {
          
@@ -535,8 +387,8 @@ BOOL APIENTRY DllMain( HMODULE hModule,
         scan_address(bf1942);
 
         if (bf1942->pReadBuffer == 0 || bf1942->pGamespyDecompressRoutine == 0
-            || bf1942->pSetReadBufferGsReturn == 0 || bf1942->pSetDecryptRoutineGsReturn == 0
-            || bf1942->pFirstByteAddrMagicByte == 0) {
+            || g_read_buffer_gs_return == 0 || g_decrypt_routine_gs_return == 0
+            || g_old_first_byte_addr == 0) {
 
             ::MessageBox(
 
@@ -549,12 +401,6 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 
             ::ExitProcess(-1);
         }
-
-        set_read_buffer_gs_return(bf1942->pSetReadBufferGsReturn);
-
-        set_decrypt_routine_gs_return(bf1942->pSetDecryptRoutineGsReturn);
-
-        set_first_magic_byte_addr(bf1942->pFirstByteAddrMagicByte);
 
         place_patchs(bf1942);
 

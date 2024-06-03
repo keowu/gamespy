@@ -70,27 +70,6 @@ namespace GameIPC {
 		return isWrited;
 	}
 
-	inline auto WriteDataFromDICEMemoryManager(Utils::DiceEngineMemoryManagerSimple* mm) -> bool {
-
-		if (mm == nullptr) return false;
-
-		DWORD dwByteWritten{ 0 };
-
-		auto isWrited = ::WriteFile(
-
-			hIPC,
-			mm->getVirtualRegion(),
-			static_cast<DWORD>(mm->getCurrentSize()),
-			&dwByteWritten,
-			nullptr
-
-		);
-
-
-		return isWrited;
-
-	}
-
 	inline auto ClosePipe() -> void {
 
 		::CloseHandle(

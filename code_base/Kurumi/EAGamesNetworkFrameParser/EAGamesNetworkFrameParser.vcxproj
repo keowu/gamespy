@@ -128,10 +128,12 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="BF1942FrameNetParser.cc" />
-    <ClCompile Include="EAGamesNetworkFrameParser.cpp" />
+    <ClCompile Include="BFVietnamFrameNetParser.cpp" />
+    <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BF1942FrameNetParser.hh" />
+    <ClInclude Include="BFVietnamFrameNetParser.hh" />
     <ClInclude Include="TeaDelKewAlgo.hh" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

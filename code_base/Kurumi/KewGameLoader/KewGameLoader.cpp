@@ -15,19 +15,6 @@ auto WINAPI InjectThread(
 
 ) -> DWORD {
 
-	::AllocConsole(
-	
-	);
-
-	::freopen_s(
-		
-		reinterpret_cast< FILE** >( stdout ),
-		"CONOUT$",
-		"w",
-		stdout
-	
-	);
-
 	InitKewUsermodeProcessWatcher(
 
 		true
@@ -266,6 +253,20 @@ auto CALLBACK WindowProc(
 			break;
 
 		case 4: { // DevMode
+
+
+			::AllocConsole(
+
+			);
+
+			::freopen_s(
+
+				reinterpret_cast< FILE** >( stdout ),
+				"CONOUT$",
+				"w",
+				stdout
+
+			);
 
 			std::cout << "DBG: " << *g_gameWindow << "\n";
 

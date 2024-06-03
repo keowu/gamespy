@@ -3,6 +3,11 @@
 ;
 .model flat
 
+; Original buffer to replace things with a fake buffer when read a decrypted buffer on new buffer data
+extern _g_old_first_byte_addr : DWORD
+extern _g_read_buffer_gs_return : DWORD
+extern _g_decrypt_routine_gs_return : DWORD
+
 includelib ucrt.lib
 includelib legacy_stdio_definitions.lib
 extern _memcpy: proc
@@ -13,11 +18,10 @@ extern _memcpy: proc
 	patch_first_byte db ?
 	patch_frame_buffer db 7FFh dup(0)
 
-	; Original buffer to replace things with a fake buffer when read a decrypted buffer on new buffer data
-	old_first_byte_addr dd 9798B0h
+	; Old buffer data
 	old_frame_buffer dd 9798B1h
 
-	; Backup buffer data
+	; Backup shuffle buffer data
 	bckp_first_byte     db 0E4h
 	bckp_frame_buffer   db 0B1h, 0C7h, 0CAh, 67h, 48h, 9Ah, 6Bh, 5Ah, 0E5h, 64h
 						db 0FFh, 26h, 0F3h, 20h, 45h, 0, 10h, 0F1h, 0A2h, 0C3h
@@ -166,36 +170,7 @@ extern _memcpy: proc
 						db 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 						db 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 
-		read_buffer_gs_return dd ?
-		decrypt_routine_gs_return dd ?
-
 .code
-
-	_set_first_magic_byte_addr proc
-
-		mov eax, dword ptr [esp+4]
-		mov old_first_byte_addr, eax  ; Stack argument One
-		inc eax ; Increment 1 to find the frame_buffer pointer that is 1 magic + frame_buffer
-		mov old_frame_buffer, eax ; Mov frame buffer pointer to global.
-
-		ret
-	_set_first_magic_byte_addr endp
-
-	_set_decrypt_routine_gs_return proc
-
-		mov eax, dword ptr [esp+4]
-		mov decrypt_routine_gs_return, eax  ; Stack argument One
-
-		ret
-	_set_decrypt_routine_gs_return endp
-
-	_set_read_buffer_gs_return proc
-		
-		mov eax, dword ptr [esp+4]
-		mov read_buffer_gs_return, eax  ; Stack argument One
-
-		ret
-	_set_read_buffer_gs_return endp
 
 	_fake_frames_to_decrypt proc
 
@@ -204,7 +179,7 @@ extern _memcpy: proc
 
 		xor eax, eax ; eax = 0
 		xor ebx, ebx ; ebx = 0
-		mov ebx,  dword ptr [old_first_byte_addr]
+		mov ebx,  dword ptr [_g_old_first_byte_addr]
 		mov al, byte ptr [bckp_first_byte]
 		mov byte ptr [ebx], al
 
@@ -241,7 +216,7 @@ extern _memcpy: proc
 		push edx             ; bufffer
 		push eax             ; socket struct
 
-		push read_buffer_gs_return ; return to recv
+		push _g_read_buffer_gs_return ; return to recv
 
 		ret
 	_replaced_read_buffer endp
@@ -275,7 +250,7 @@ GameSpyDecrompressSection segment
 		
 		add edi, 5 ; ALIGN THE GAMESPY STRUCT. hehe the nandayo
 
-		push decrypt_routine_gs_return
+		push _g_decrypt_routine_gs_return
 		ret
 
 	_fake_gamespy_decompress_routine_2 endp

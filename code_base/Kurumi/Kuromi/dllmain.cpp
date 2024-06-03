@@ -1,12 +1,15 @@
 ﻿/*
     (C) Keowu - 2024
 */
+#include <chrono>
+#include <thread>
 #include <Windows.h>
 #include <dbghelp.h>
 #include <strsafe.h>
 #include <iostream>
-#include "Utils.hpp"
 #include "bddisasm/bddisasm.h"
+#include "Utils.hpp"
+#include "GameIPC.hh"
 
 extern "C" void new_get_socket_gamespy_buffer_gs2004_stub_bungie();
 extern "C" void new_goa_decrypt_buffer_gs2004_stub_bungie();
@@ -16,14 +19,14 @@ extern "C" DWORD g_socket_gs2004_return;
 extern "C" DWORD g_goadecbody_gs2004_return;
 extern "C" DWORD g_gs2004Recv;
 
-DWORD g_socket_gs2004_return;
-DWORD g_goadecbody_gs2004_return;
+DWORD g_socket_gs2004_return{ 0 };
+DWORD g_goadecbody_gs2004_return{ 0 };
 DWORD g_gs2004Recv{ 0 };
 
 #pragma comment(lib, "Dbghelp.lib")
 
 static BOOL g_run = TRUE;
-#define DEBUG TRUE
+#define DEBUG FALSE
 
 typedef struct GS2004_NETWORK {
 
@@ -74,7 +77,6 @@ auto scan_address(GS2004_NETWORK* gs2004) -> void {
 
         if (g_goadecbody_gs2004_return == 0 && ND_SUCCESS(bdStatus) && gs2004->isVariantV2 == TRUE) {
 
-            //0x005DD4B3
             if (instructionsToAnalyze[0].Instruction == ND_INS_CMP
                 && instructionsToAnalyze[0].Operands[0].Info.Register.Reg == NDR_EBP
                 && instructionsToAnalyze[0].Operands[1].Info.Immediate.Imm == 06)
@@ -98,7 +100,6 @@ auto scan_address(GS2004_NETWORK* gs2004) -> void {
 
         if (gs2004->pNewGoaDecryptGs2004Stub == 0 && ND_SUCCESS(bdStatus) && gs2004->isVariantV2 == TRUE) {
 
-            //005DD497
             if (instructionsToAnalyze[0].Instruction == ND_INS_ADD
                 && instructionsToAnalyze[0].Operands[0].Info.Register.Reg == NDR_EDI
                 && instructionsToAnalyze[0].Operands[1].Info.Register.Reg == NDR_EAX)
@@ -124,7 +125,6 @@ auto scan_address(GS2004_NETWORK* gs2004) -> void {
 
         if (gs2004->pNewSocketGs2004Stub == 0 && ND_SUCCESS(bdStatus) && gs2004->isVariantV2 == TRUE) {
 
-            //005DDF74
             if (instructionsToAnalyze[0].Instruction == ND_INS_MOV
                 && instructionsToAnalyze[0].Operands[0].Info.Register.Reg == NDR_ECX)
 
@@ -221,8 +221,6 @@ auto scan_address(GS2004_NETWORK* gs2004) -> void {
 
         if (g_socket_gs2004_return == 0 && ND_SUCCESS(bdStatus) && gs2004->pNewSocketGs2004Stub != 0) {
 
-
-            //Searching for after recv call(Using a universal way)
             INSTRUX instruction{ 0 };
             auto z = i - 1;
 
@@ -257,6 +255,8 @@ auto scan_address(GS2004_NETWORK* gs2004) -> void {
             && gs2004->pNewSocketGs2004Stub != 0 && g_socket_gs2004_return != 0) break;
 
     }
+
+    //TODO: masterserver address replacement
 
 }
 
@@ -314,128 +314,58 @@ auto place_patchs(GS2004_NETWORK* gs2004) -> void {
 
 }
 
+auto WINAPI KewHandler(PVOID arg) -> DWORD {
 
-auto WINAPI KewExceptionHandler(EXCEPTION_POINTERS* pExceptionInfo) -> NTSTATUS {
+    auto gs2004 = reinterpret_cast<GS2004_NETWORK*>(arg);
 
-    //Microsoft DRM calls Exception Handler Sometimes, we do not need to generate exception for that cases
-    MEMORY_BASIC_INFORMATION mb{ 0 };
+    std::printf("[DBG]: Waiting for KewGameLoader....\n");
 
-    ::VirtualQuery(::GetModuleHandle(L"Kuromi.dll"), &mb, sizeof(mb));
+    GameIPC::InitPipe();
 
-    if (pExceptionInfo->ContextRecord->Eip < reinterpret_cast<DWORD>(mb.AllocationBase) || pExceptionInfo->ContextRecord->Eip > reinterpret_cast<DWORD>(mb.AllocationBase) + mb.RegionSize) return EXCEPTION_CONTINUE_EXECUTION;
+    std::printf("[DBG]: IPC %X\n", GameIPC::hIPC);
 
-    //Generating a MiniDump
-    WCHAR wchPath[MAX_PATH]{ 0 };
-    WCHAR wchFileName[MAX_PATH]{ 0 };
+    auto asmOne = Utils::get_funct_diasm(reinterpret_cast<uintptr_t>(new_get_socket_gamespy_buffer_gs2004_stub_ea), "new_get_socket_gamespy_buffer_gs2004_stub_ea");
+    auto asmTwo = Utils::get_funct_diasm(reinterpret_cast<uintptr_t>(new_get_socket_gamespy_buffer_gs2004_stub_bungie), "new_get_socket_gamespy_buffer_gs2004_stub_bungie");
 
-    SYSTEMTIME stLocalTime;
-    MINIDUMP_EXCEPTION_INFORMATION ExpParam;
+    std::string strInformation("");
 
-    GetLocalTime(
+    char chBuffer[1024]{ 0 };
 
-        &stLocalTime
+    while (true) {
 
-    );
+        strInformation.clear();
 
-    GetTempPath(
+        sprintf_s(
 
-        MAX_PATH,
-        wchPath
-
-    );
-
-    StringCchPrintf(
-
-        wchFileName,
-        MAX_PATH,
-        L"%s%s",
-        wchPath,
-        L"KuromiGS2004"
-
-    );
-
-    CreateDirectory(
-
-        wchFileName,
-        NULL
-
-    );
-
-    StringCchPrintf(
-
-        wchFileName,
-        MAX_PATH,
-        L"%s%s\\%s-%04d%02d%02d-%02d%02d%02d-%ld-%ld.dmp",
-        wchPath,
-        L"KuromiGS2004",
-        L"v1.1",
-        stLocalTime.wYear,
-        stLocalTime.wMonth,
-        stLocalTime.wDay,
-        stLocalTime.wHour,
-        stLocalTime.wMinute,
-        stLocalTime.wSecond,
-        GetCurrentProcessId(),
-        GetCurrentThreadId()
-
-    );
-
-    auto hDumpFile = CreateFile(
-
-        wchFileName,
-        GENERIC_READ | GENERIC_WRITE,
-        FILE_SHARE_WRITE | FILE_SHARE_READ,
-        0,
-        CREATE_ALWAYS,
-        0,
-        0
-
-    );
-
-    ExpParam.ThreadId = GetCurrentThreadId();
-    ExpParam.ExceptionPointers = pExceptionInfo;
-    ExpParam.ClientPointers = TRUE;
-
-    auto bMiniDumpSuccessful = MiniDumpWriteDump(
-
-        GetCurrentProcess(),
-        GetCurrentProcessId(),
-        hDumpFile,
-        MiniDumpWithDataSegs,
-        &ExpParam,
-        NULL,
-        NULL
-
-    );
-
-    // This verification is just for a small fun with some brazilians!
-    if (
-        PRIMARYLANGID(
-            LANGIDFROMLCID(::GetUserDefaultLCID())) == LANG_PORTUGUESE
-        && SUBLANGID(
-            LANGIDFROMLCID(::GetUserDefaultLCID())) == SUBLANG_PORTUGUESE_BRAZILIAN
-        )
-        ::MessageBoxW(
-
-            NULL,
-            L"Ha não, deu pau mano!\nAgora para você não fazer o L eu vou gerar um MiniDump para você investigar o que rolou ou você pode ir lá no Github pedir ajuda(github.com/keowu/gamespy).",
-            L"Faça o L Imediatamente, Except!",
-            NULL
-
-        );
-    else
-        ::MessageBoxW(
-
-            NULL,
-            L"Bro something goes really bad.\nWe are creating a MiniDump so you can investigate it or open a issue on github asking for help(github.com/keowu/gamespy).",
-            L"Oh no, Except!",
-            NULL
+            chBuffer, 512,
+            "Variant2: %d | Masterserver: %s | NewGoaDecryptGs2004Stub: 0x%X\ng_socket_gs2004_return: 0x%X | g_goadecbody_gs2004_return: 0x%X | g_gs2004Recv: 0x%X\n",
+            gs2004->isVariantV2,
+            gs2004->MasterServer,
+            gs2004->pNewGoaDecryptGs2004Stub,
+            g_socket_gs2004_return,
+            g_goadecbody_gs2004_return,
+            g_gs2004Recv
 
         );
 
-    return !TerminateProcess(::GetCurrentProcess(), pExceptionInfo->ExceptionRecord->ExceptionCode);
+        strInformation.assign(chBuffer, 1024);
+
+        GameIPC::WriteData(strInformation);
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+
+        GameIPC::WriteData(asmOne);
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+     
+        GameIPC::WriteData(asmTwo);
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+
+    }
+
+    return 0;
 }
-
 
 BOOL APIENTRY DllMain( HMODULE hModule,
                        DWORD  ul_reason_for_call,
@@ -446,6 +376,8 @@ BOOL APIENTRY DllMain( HMODULE hModule,
     if (g_run) {
 
         ::DisableThreadLibraryCalls(hModule);
+
+        ::AddVectoredExceptionHandler(TRUE, reinterpret_cast<PVECTORED_EXCEPTION_HANDLER>(Utils::KewExceptionHandler));
 
         if (DEBUG) {
 
@@ -486,7 +418,16 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 
         place_patchs(gs2004);
 
-        ::AddVectoredExceptionHandler(TRUE, reinterpret_cast<PVECTORED_EXCEPTION_HANDLER>(KewExceptionHandler));
+        ::CreateThread(
+
+            NULL,
+            NULL,
+            reinterpret_cast<LPTHREAD_START_ROUTINE>(KewHandler),
+            gs2004,
+            NULL,
+            NULL
+
+        );
     
         g_run = FALSE;
     }

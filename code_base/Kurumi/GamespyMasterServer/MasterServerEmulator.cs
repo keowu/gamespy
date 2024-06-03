@@ -115,7 +115,6 @@ namespace GamespyMasterServerTCP {
             var receivedMessage = Encoding.UTF8.GetString(buffer, 0, receivedBytes);
             if (receivedMessage.Contains("bfvietnam")) {
 
-                //PAYLOAD 3 DO NOT HAVE A PARSER YET, TODO: CREATE A PARSE TO INSERT FRAMES BASED ON 0X15 FLAG ENDING WITH 0X00 0XFFFFFFF MAGIC
                 payloadGS2004Bytes = File.ReadAllBytes(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "payload3.bin"));
                 await clientSocket.SendAsync(new ArraySegment<byte>(payloadGS2004Bytes), SocketFlags.None);
 

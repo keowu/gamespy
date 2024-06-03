@@ -1,7 +1,7 @@
 
 namespace Utils {
 
-    class FUCKDICEENGINEMEMORYMANAGER {
+    class DiceEngineMemoryManagerSimple {
 
     private:
         char* m_virtualRegion;
@@ -9,7 +9,7 @@ namespace Utils {
         size_t m_current_pos;
 
     public:
-        FUCKDICEENGINEMEMORYMANAGER() {
+        DiceEngineMemoryManagerSimple() {
 
             this->m_virtualRegion = reinterpret_cast<char*>(VirtualAlloc(NULL, MAXSIZE, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE));
 
@@ -46,7 +46,7 @@ namespace Utils {
             return this->m_current_pos;
         }
 
-        ~FUCKDICEENGINEMEMORYMANAGER() {
+        ~DiceEngineMemoryManagerSimple() {
 
             ::VirtualFree(this->m_virtualRegion, 1024, MEM_DECOMMIT | MEM_RELEASE);
 
@@ -76,7 +76,7 @@ namespace Utils {
         return std::make_pair(textVa, textSize);
     }
 
-    auto get_funct_diasm(uintptr_t pAddy, const char* chCaption) -> FUCKDICEENGINEMEMORYMANAGER* {
+    auto get_funct_diasm(uintptr_t pAddy, const char* chCaption) -> DiceEngineMemoryManagerSimple* {
 
         //jmp [0x0000] -> Original instruction redirect
         unsigned char jmpRelative[10]{ 0 };
@@ -103,7 +103,7 @@ namespace Utils {
 
         auto sz{ 0 };
 
-        auto mm = new FUCKDICEENGINEMEMORYMANAGER();
+        auto mm = new DiceEngineMemoryManagerSimple();
 
         mm->storeString(const_cast<char*>(chCaption));
 
@@ -122,6 +122,105 @@ namespace Utils {
         }
 
         return mm;
+    }
+
+    auto WINAPI KewExceptionHandler(EXCEPTION_POINTERS* pExceptionInfo) -> NTSTATUS {
+
+        //Generating a MiniDump
+        WCHAR wchPath[MAX_PATH]{ 0 };
+        WCHAR wchFileName[MAX_PATH]{ 0 };
+
+        SYSTEMTIME stLocalTime;
+        MINIDUMP_EXCEPTION_INFORMATION ExpParam;
+
+        GetLocalTime(
+
+            &stLocalTime
+
+        );
+
+        GetTempPath(
+
+            MAX_PATH,
+            wchPath
+
+        );
+
+        StringCchPrintf(
+
+            wchFileName,
+            MAX_PATH,
+            L"%s%s",
+            wchPath,
+            L"KurumiBF1942"
+
+        );
+
+        CreateDirectory(
+
+            wchFileName,
+            NULL
+
+        );
+
+        StringCchPrintf(
+
+            wchFileName,
+            MAX_PATH,
+            L"%s%s\\%s-%04d%02d%02d-%02d%02d%02d-%ld-%ld.dmp",
+            wchPath,
+            L"KurumiBF1942",
+            L"v1.1",
+            stLocalTime.wYear,
+            stLocalTime.wMonth,
+            stLocalTime.wDay,
+            stLocalTime.wHour,
+            stLocalTime.wMinute,
+            stLocalTime.wSecond,
+            GetCurrentProcessId(),
+            GetCurrentThreadId()
+
+        );
+
+        auto hDumpFile = CreateFile(
+
+            wchFileName,
+            GENERIC_READ | GENERIC_WRITE,
+            FILE_SHARE_WRITE | FILE_SHARE_READ,
+            0,
+            CREATE_ALWAYS,
+            0,
+            0
+
+        );
+
+        ExpParam.ThreadId = GetCurrentThreadId();
+        ExpParam.ExceptionPointers = pExceptionInfo;
+        ExpParam.ClientPointers = TRUE;
+
+        auto bMiniDumpSuccessful = MiniDumpWriteDump(
+
+            GetCurrentProcess(),
+            GetCurrentProcessId(),
+            hDumpFile,
+            MiniDumpWithDataSegs,
+            &ExpParam,
+            NULL,
+            NULL
+
+        );
+
+        // This verification is just for a small fun with some brazilians!
+        ::MessageBoxW(
+
+            NULL,
+            L"Bro something goes really bad.\nWe are creating a MiniDump so you can investigate it or open a issue on github asking for help(github.com/keowu/gamespy).",
+            L"Oh no, Except!",
+            NULL
+
+        );
+
+        return !TerminateProcess(::GetCurrentProcess(), pExceptionInfo->ExceptionRecord->ExceptionCode);
     }
 
 };

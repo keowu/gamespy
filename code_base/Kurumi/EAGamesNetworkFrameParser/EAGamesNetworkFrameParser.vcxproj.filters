@@ -15,10 +15,13 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="EAGamesNetworkFrameParser.cpp">
+    <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="BF1942FrameNetParser.cc">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="BFVietnamFrameNetParser.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -27,6 +30,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="TeaDelKewAlgo.hh">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="BFVietnamFrameNetParser.hh">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
