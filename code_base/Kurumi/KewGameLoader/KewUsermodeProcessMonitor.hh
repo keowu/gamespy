@@ -1,5 +1,8 @@
 /*
     (C) Keowu - 2024
+
+    PLEASE DISABLE THE OPTIMIZATION FOR COMPILE BECAUSE MICROSOFT COMPILE LIKE TRASH FOR IWbemObjectSink
+
 */
 #pragma once
 #include <iostream>

@@ -7,6 +7,7 @@
 #include <dbghelp.h>
 #include <strsafe.h>
 #include <iostream>
+#include <vector>
 #include "bddisasm/bddisasm.h"
 #include "Utils.hpp"
 #include "GameIPC.hh"
@@ -27,6 +28,13 @@ DWORD g_gs2004Recv{ 0 };
 
 static BOOL g_run = TRUE;
 #define DEBUG FALSE
+
+typedef struct GSMSReplacement {
+
+    const char* chDomain;
+    size_t szDomain;
+
+};
 
 typedef struct GS2004_NETWORK {
 
@@ -256,7 +264,105 @@ auto scan_address(GS2004_NETWORK* gs2004) -> void {
 
     }
 
-    //TODO: masterserver address replacement
+    std::vector<GSMSReplacement *> masterServers;
+
+    if (gs2004->isVariantV2 == TRUE) {
+
+
+        masterServers.push_back(new GSMSReplacement{
+
+                "%s.master.gamespy.com",
+                22
+
+        });
+
+        masterServers.push_back(new GSMSReplacement{
+
+                "%s.available.gamespy.com",
+                25
+
+        });
+
+        masterServers.push_back(new GSMSReplacement{
+        
+                "%s.ms%d.gamespy.com",
+                20
+
+        });
+
+    }
+    else {
+
+        masterServers.push_back(new GSMSReplacement{
+
+                "s1.master.hosthpc.com",
+                22
+
+        });
+
+        masterServers.push_back(new GSMSReplacement{
+
+                "s1.ms01.hosthpc.com",
+                20
+
+        });
+
+        masterServers.push_back(new GSMSReplacement{
+
+                "natneg1.hosthpc.com",
+                20
+
+        });
+
+        masterServers.push_back(new GSMSReplacement{
+
+                "natneg2.hosthpc.com",
+                20
+
+        });
+
+    }
+
+    if (masterServers.empty()) return;
+
+    auto dataSection = Utils::find_section(".rdata");
+
+    if (dataSection.first == 0 && dataSection.second == 0) return;
+
+    int iTimes{ 0 }, gsTimes = masterServers.size();
+
+    for (auto i = dataSection.first; i < dataSection.first + dataSection.second; i++) {
+
+        for (auto gs : masterServers) {
+
+            if (std::memcmp(
+
+                reinterpret_cast<LPVOID>(i),
+                gs->chDomain,
+                gs->szDomain
+
+            ) == 0) {
+            
+                std::printf("[DBG] Fixing MasterServer entry at: %X\n", i);
+
+                DWORD dwOldProtect{ 0 };
+                VirtualProtect(reinterpret_cast<LPVOID>(i), strnlen_s(gs2004->MasterServer, 18), PAGE_EXECUTE_READWRITE, &dwOldProtect);
+
+                RtlZeroMemory(reinterpret_cast<LPVOID>(i), gs->szDomain);
+
+                std::memcpy(reinterpret_cast<LPVOID>(i), gs2004->MasterServer, strnlen_s(gs2004->MasterServer, 18));
+
+                VirtualProtect(reinterpret_cast<LPVOID>(i), strnlen_s(gs2004->MasterServer, 18), dwOldProtect, &dwOldProtect);
+
+                iTimes++;
+
+            }
+
+        }
+
+        if (iTimes >= gsTimes) break;
+
+    }
 
 }
 

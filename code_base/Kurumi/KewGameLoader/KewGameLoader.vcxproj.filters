@@ -13,6 +13,9 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Discord Developers SDK">
+      <UniqueIdentifier>{2fee513d-d37f-4290-ade9-6c3b5fb05d44}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="framework.h">
@@ -36,6 +39,18 @@
     <ClInclude Include="GameIPC.hh">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="discord_developers_sdk\src\backoff.h">
+      <Filter>Discord Developers SDK</Filter>
+    </ClInclude>
+    <ClInclude Include="discord_developers_sdk\src\msg_queue.h">
+      <Filter>Discord Developers SDK</Filter>
+    </ClInclude>
+    <ClInclude Include="discord_developers_sdk\src\rpc_connection.h">
+      <Filter>Discord Developers SDK</Filter>
+    </ClInclude>
+    <ClInclude Include="discord_developers_sdk\src\serialization.h">
+      <Filter>Discord Developers SDK</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="KewGameLoader.cpp">
@@ -46,6 +61,24 @@
     </ClCompile>
     <ClCompile Include="DevOverlayFrame.cc">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="discord_developers_sdk\src\connection_win.cpp">
+      <Filter>Discord Developers SDK</Filter>
+    </ClCompile>
+    <ClCompile Include="discord_developers_sdk\src\discord_register_win.cpp">
+      <Filter>Discord Developers SDK</Filter>
+    </ClCompile>
+    <ClCompile Include="discord_developers_sdk\src\discord_rpc.cpp">
+      <Filter>Discord Developers SDK</Filter>
+    </ClCompile>
+    <ClCompile Include="discord_developers_sdk\src\dllmain.cpp">
+      <Filter>Discord Developers SDK</Filter>
+    </ClCompile>
+    <ClCompile Include="discord_developers_sdk\src\rpc_connection.cpp">
+      <Filter>Discord Developers SDK</Filter>
+    </ClCompile>
+    <ClCompile Include="discord_developers_sdk\src\serialization.cpp">
+      <Filter>Discord Developers SDK</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

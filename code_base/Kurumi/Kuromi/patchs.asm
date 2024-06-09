@@ -10,17 +10,55 @@ extern _memcpy: proc
 	old_gamespy_cls_buffer dd ?
 	new_gamespy_cls_buffer db 4096 dup(0)
 
+    gamespysocket struct
+	    connection_status_flag dd ?
+	    gap db 112 dup(?)
+	    pGamespyBuffer dd ?
+	    actual_size dd ?
+	    gap1 db 1028 dup(?)
+	    throw_gamespy_connection_error dd ?
+	    state dd ?
+	    gap2 db 24 dup(?)
+	    socket dd ?
+	    gap3 db 276 dup(?)
+	    gs_state dd ?
+    gamespysocket ends
+
+    config_gamespy struct
+	    state dd ?
+	    gap db 4 dup(?)
+	    keylist dd ?
+	    gap1 db 104 dup(?)
+	    pDecryptedBuffer dd ?
+	    pDecryptBufferIn dd ?
+	    values_to_populate db 1020 dup(?)
+	    num_populate dd ?
+	    expectedelements dd ?
+	    ListCallBack dd ?
+	    instance dd ?
+	    gap2 db 8 dup(?)
+	    ip_usuario_placed_requested dd ?
+	    gap3 db 4 dup(?)
+	    defaultPortGameservers dw ?
+	    callback_body_init dd ?
+	    gap4 db 12 dup(?)
+	    crypt_key db ?
+	    gap5 db 263 dup(?)
+	    gs_query_flags db ?
+	    pstate dd ?
+    config_gamespy ends
+
 .code
 
 _new_get_socket_gamespy_buffer_gs2004_stub_bungie proc
 
-	; Acessando os fields da struct. ESI contém a base para "clsGSCon"
-	mov  edx, [esi+74h]  ; clsGSCon->pGamespyBuffer -> Recuperando o buffer a ser armazenado
-	mov  eax, [esi+4A0h] ; clsGSCon->socket -> Recuperando o socket
+	; Acessando os fields da struct. ESI contém a base para a struct "clsGSCon".
+    mov edx, dword ptr [esi].gamespysocket.pGamespyBuffer
+    mov eax, dword ptr [esi].gamespysocket.socket
          
 	push edi ; Salvando valor antigo de EDI (OLD actual_size)
-         
-	mov  edi, [esi+78h] ; clsGSCon->actual_size | Recuperando o novo valor da struct clsGSCon para actual_size.
+
+    mov edi, dword ptr [esi].gamespysocket.actual_size
          
 	push 0          ; flags para serem utilizadas na chamada de recv
          
@@ -44,12 +82,13 @@ _new_get_socket_gamespy_buffer_gs2004_stub_bungie endp
 
 _new_get_socket_gamespy_buffer_gs2004_stub_ea proc
     
-    	mov  ecx, [esi+74h] ; class values
-    	mov  edx, [esi+4A0h]
+        mov ecx, dword ptr [esi].gamespysocket.pGamespyBuffer
+    	
+        mov edx, dword ptr [esi].gamespysocket.socket
          
     	push edi
-         
-    	mov  edi, [esi+78h]
+
+        mov edi, dword ptr [esi].gamespysocket.actual_size
          
     	push 0               ; flags
          
@@ -71,7 +110,8 @@ _new_get_socket_gamespy_buffer_gs2004_stub_ea proc
     	pushfd
     
     	lea ecx, new_gamespy_cls_buffer
-    	mov edx, [esi+74h] ; GS2004V2 Buffer Handler
+    	
+        mov edx, dword ptr [esi].gamespysocket.pGamespyBuffer
 
     	push 4096
     	push ecx
@@ -96,12 +136,14 @@ _new_goa_decrypt_buffer_gs2004_stub_bungie proc
     	lea edi, new_gamespy_cls_buffer
 
 	push ebp
-	lea  eax, [esi+4ACh]
+
+    lea eax, dword ptr [esi].config_gamespy.crypt_key
 
 	push edi
 
 	push eax
-	mov  dword ptr [esi+5B8h], 1
+
+    mov dword ptr [esi].config_gamespy.pstate, 1
     
     	push _g_goadecbody_gs2004_return
 	ret
@@ -116,11 +158,11 @@ _new_goa_decrypt_buffer_gs2004_stub_ea proc
          
     	push ebp ;size
 
-    	lea  ecx, [esi+4ACh] ; clsGSCon acessando field key para o GOA
+        lea ecx, dword ptr [esi].config_gamespy.crypt_key
          
     	mov  edx, edi ; 1º Argument
-         
-    	mov  dword ptr [esi+5B8h], 1 ; set Already decrypt
+
+        mov dword ptr [esi].config_gamespy.pstate, 1
 
     	; GS 2004 V2, NEED TO ALIGN STACK because we are not using GOA
     	add esp, 4

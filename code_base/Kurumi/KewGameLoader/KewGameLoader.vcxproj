@@ -98,6 +98,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <Optimization>Disabled</Optimization>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -136,6 +137,10 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="DevOverlayFrame.hh" />
+    <ClInclude Include="discord_developers_sdk\src\backoff.h" />
+    <ClInclude Include="discord_developers_sdk\src\msg_queue.h" />
+    <ClInclude Include="discord_developers_sdk\src\rpc_connection.h" />
+    <ClInclude Include="discord_developers_sdk\src\serialization.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="GameIPC.hh" />
     <ClInclude Include="KewGameLoader.h" />
@@ -145,6 +150,12 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DevOverlayFrame.cc" />
+    <ClCompile Include="discord_developers_sdk\src\connection_win.cpp" />
+    <ClCompile Include="discord_developers_sdk\src\discord_register_win.cpp" />
+    <ClCompile Include="discord_developers_sdk\src\discord_rpc.cpp" />
+    <ClCompile Include="discord_developers_sdk\src\dllmain.cpp" />
+    <ClCompile Include="discord_developers_sdk\src\rpc_connection.cpp" />
+    <ClCompile Include="discord_developers_sdk\src\serialization.cpp" />
     <ClCompile Include="KewGameLoader.cpp" />
     <ClCompile Include="KewUsermodeProcessMonitor.cc" />
   </ItemGroup>

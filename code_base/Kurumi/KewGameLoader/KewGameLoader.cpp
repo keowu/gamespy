@@ -5,9 +5,13 @@
 #include "KewGameLoader.h"
 #include "KewUsermodeProcessMonitor.hh"
 #include "DevOverlayFrame.hh"
+#include "discord_developers_sdk/include/discord_register.h"
+#include "discord_developers_sdk/include/discord_rpc.h"
+
 
 std::shared_ptr<std::string> g_gameWindow;
 bool g_run;
+static int64_t timePlayingRPC = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 
 auto WINAPI InjectThread( 
 	
@@ -36,6 +40,13 @@ auto WINAPI WinMain(
 	hPrevInstance;
 	lpCmdLine;
 	nCmdShow;
+
+	/*
+		Discord RPC
+	*/
+	DiscordEventHandlers Handle;
+	memset(&Handle, 0, sizeof(Handle));
+	Discord_Initialize("1249452146798235760", &Handle, 1, NULL);
 
 	WNDCLASS wc {};
 	wc.lpfnWndProc = WindowProc;
@@ -142,6 +153,21 @@ auto CALLBACK WindowProc(
 	LPARAM lParam
 
 ) -> LRESULT {
+
+	/*
+		Update Discord RPC
+	*/
+	DiscordRichPresence discordPresence;
+	memset(&discordPresence, 0, sizeof(discordPresence));
+	discordPresence.state = "DEVELOPER ROOM";
+	discordPresence.details = "Playing AS GAME-DEVELOPER";
+	discordPresence.startTimestamp = timePlayingRPC;
+	discordPresence.largeImageKey = "bigicon";
+	discordPresence.largeImageText = "Purojekuto KAI";
+	discordPresence.smallImageKey = "icon_pequeno";
+	discordPresence.smallImageText = "Purojekuto KAI";
+	Discord_UpdatePresence(&discordPresence);
+
 
 	switch ( uMsg ) {
 
@@ -254,19 +280,18 @@ auto CALLBACK WindowProc(
 
 		case 4: { // DevMode
 
-
-			::AllocConsole(
+			/*::AllocConsole(
 
 			);
 
 			::freopen_s(
 
-				reinterpret_cast< FILE** >( stdout ),
+				reinterpret_cast<FILE**>(stdout),
 				"CONOUT$",
 				"w",
 				stdout
 
-			);
+			);*/
 
 			std::cout << "DBG: " << *g_gameWindow << "\n";
 
