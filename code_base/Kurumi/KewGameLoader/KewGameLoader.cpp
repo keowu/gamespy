@@ -159,8 +159,8 @@ auto CALLBACK WindowProc(
 	*/
 	DiscordRichPresence discordPresence;
 	memset(&discordPresence, 0, sizeof(discordPresence));
-	discordPresence.state = "DEVELOPER ROOM";
-	discordPresence.details = "Playing AS GAME-DEVELOPER";
+	discordPresence.state = "CAPCOM Purojekuto KAI - DEV ROOM";
+	discordPresence.details = "Playing as Anticheat Developer";
 	discordPresence.startTimestamp = timePlayingRPC;
 	discordPresence.largeImageKey = "bigicon";
 	discordPresence.largeImageText = "Purojekuto KAI";

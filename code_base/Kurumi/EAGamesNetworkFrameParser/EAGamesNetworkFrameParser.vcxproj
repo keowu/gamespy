@@ -128,7 +128,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="BF1942FrameNetParser.cc" />
-    <ClCompile Include="BFVietnamFrameNetParser.cpp" />
+    <ClCompile Include="BFVietnamFrameNetParser.cc" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>

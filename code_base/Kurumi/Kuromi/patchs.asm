@@ -67,7 +67,6 @@ _new_get_socket_gamespy_buffer_gs2004_stub_bungie proc
 	push ecx        ; Tamanho final a ser lido nesta interação
 
 	; Obtendo o buffer original e substituindo por um nosso
-	;mov old_gamespy_cls_buffer, edx ; Old is not necessary
 	lea edx, new_gamespy_cls_buffer
 
 	add  edx, edi   ; Avançando no buffer com o índice necessário

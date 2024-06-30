@@ -1,4 +1,4 @@
-# Revivendo velhos tempos - Engenharia Reversa e Reimplementação do multiplayer de meus jogos antigos
+# Reescrevendo totalmente o suporte da GameSpy 2000 a 2004 usando engenharia reversa em jogos da EA e Bungie sem ser processado por direito autoral
 
 Author: João Vitor (@Keowu) - Security Researcher
 
@@ -20,7 +20,9 @@ No clima nostalgico que esta pesquisa nos apresenta. outro grande clássico dos 
 
 PS: Não espero que um não nativo brasileiro entenda o peso desta referência(apenas respeite o momento), sendo assim siga com o decorrer do artigo.
 
-Essa pesquisa tem uma certa importância pessoal, enquanto escrevia lembrei-me de ótimos momentos com meus amigos do Ensino Fundamental e Médio, do quanto me diverti jogando esses clássicos, da quantidade de pessoas que conheci(brasileiros e estrangeiros) e de como a simplicidade nos faz Tão Feliz. nesta época com certeza eu não tinha acesso aos melhores hardwares do mercado mas o pouco que tinha, me moldaram a lutar e chegar nos meus objetivos. espero sinceramente que você não leia isso com o olhar de um idiota e superioridade, que afogue a sua própria idiotização e transforme suas ideias em uma incansável luta pela própria evolução!
+Essa pesquisa tem uma certa importância pessoal, enquanto escrevia lembrei-me de ótimos momentos com meus amigos do Ensino Fundamental e Médio, do quanto me diverti jogando esses clássicos, da quantidade de pessoas que conheci(brasileiros e estrangeiros) e de como a simplicidade nos faz Tão Feliz. nesta época com certeza eu não tinha acesso aos melhores hardwares do mercado mas o pouco que tinha, me moldaram a lutar e chegar nos meus objetivos. Não tinha um centavo, mas eu sempre tive uma visão. espero sinceramente que você não leia isso com o olhar de um idiota e superioridade, que afogue a sua própria idiotização e transforme suas ideias em uma incansável luta pela própria evolução!
+
+! Além disso como de costume em meus artigos recomendo uma música, e desta vez escolhi: [Capital Inicial - Primeiros Erros](https://www.youtube.com/watch?v=jabmx3QoJGA), edit: ouvir depois de ler).
 
 ### GameSpy da glória a Decadência
 
@@ -272,7 +274,7 @@ Além do output bater com alguns softwares de keygen disponíveis na internet, a
 
 ![#31](imagens/bf1942_21.png)
 
-Se você estiver se perguntando o que aconteceria se dois seriais com a mesma hash estivessem em um mesmo servidor, ambos levariam disconnect, e podemos abusar disso apenas hookando um procedimento de implementação do md5, sera que podemos considerar uma vulnerabilidade ? fique a sua própria interpretação pessoal sobre o assunto.
+Se você estiver se perguntando o que aconteceria se dois seriais com a mesma hash estivessem em um mesmo servidor, ambos levariam disconnect, e podemos abusar disso apenas hookando um procedimento de implementação do MD5, sera que podemos considerar uma vulnerabilidade ? fique a sua própria interpretação pessoal sobre o assunto.
 
 ![#32](imagens/genericanimestuff6.gif)
 
@@ -697,7 +699,7 @@ Antes de continuarmos a estudar a Gamespy, vamos entender um pouco de como foi o
 
 ![#54](imagens/bungie_40.png)
 
-Então se atualmente você ainda tiver o Halo CE, pode simplesmente aplicar um patch disponibilizado pela própria Bungie e continuar jogando sem inpacto algum. porem ao decorrer desse artigo usaremos o Halo e também ofereceremos suporte, dessa forma garantindo que ele jamais venha a morrer caso a Bungie resolva desligar seus servidores.
+Então se atualmente você ainda tiver o Halo CE, pode simplesmente aplicar um patch disponibilizado pela própria Bungie e continuar jogando sem inpacto algum. porem ao decorrer desse artigo usaremos o Halo e também ofereceremos suporte, dessa forma garantindo que ele jamais venha a morrer caso a Bungie resolva desligar seus servidores como a EA.
 
 ### Como ocorre a comunicação de rede
 
@@ -763,30 +765,426 @@ Antes de irmos a fundo em como o Payload é composto, vamos entender como ele é
 
 Vamos analisar o processo de trabalho com os payloads recebidos do Masterserver provider pela GS2004. durante a analise reverti completamente o funcionamento do código que tem esse trabalho de receber, organizar, parsear keys e flags dos payloads e claro, os servidores. os dois procedimentos importantes e responsáveis por todo trabalho são ```get_socket_gamespy_buffer``` e ```execute_tcp_decryption```, ambos interligados e dependentes em seu funcionamento.
 
-Vamos iniciar pelo procedimento ```get_socket_gamespy_buffer```:
+Antes de irmos a fundo precisamos ter uma pequna base de conhecimento em como é gerenciado as informações de conexão na SDK. temos diversas checagens de status e integridade da conexão e flags de status, e callbacks registradas por quem implementa a SDK. então faz necessário entendermos a struct base de configuração de sockets de rede. aqui referidas como ```gamespysocket``` ou ```clsGSCon```, com a seguinte declaração revertida:
+
+```c++
+struct gamespysocket {
+  UINT32 connection_status_flag;
+  . . .
+  UINT32 pGamespyBuffer;
+  UINT32 actual_size;
+  . . .
+  void (__cdecl *throw_gamespy_connection_error)(UINT32, UINT32, UINT32, UINT32);
+  UINT32 state;
+  . . .
+  UINT32 socket;
+  UCHAR goa_header_key[276];
+  UINT32 gs_state;
+};
+
+```
+Esta struct é importante e utilizada para armazenar todos os estados e configurações referidos as conexões feitas pela SDK da Gamespy 2004. cada field possui um significado que vamos detalhar neste momento:
+
+```connection_status_flag``` - Armazena flags de estado de conexão atualmente assumido pela SDK, flags como: Conectado, disconectado, socket error, timeout entre outras.
+```pGamespyBuffer``` - Armazena a referência ao payload lido a partir do socket estabelecido com a gamespy.
+```actual_size``` - Armazena informações referente ao tamanho do payload armazenado, esse campo é extremamente volatil e variável, então nem a própria SDK o considera informação confiável(já que a o decorrer da explicação entenderemos como de fato fazem a checagem pelo tamanho).
+```throw_gamespy_connection_error``` - Armazena o endereço da função de callback para erros de conexão definidos por quem implementa a SDK.
+```state``` - Estado é utilizado para indicar o estado de onde ocorreu determinada gamespy connection error, basicamente o motivo de ter ocorrido. diferente da connection_status_flag que é interna, este valor é retornado ao callback registrado pelo desenvolvedor.
+```socket``` - É um referência SOCKET convencional estabelecida usando a API do sistema operacional ao qual foi compilada(isso varia entre sistemas operacionais já que a Gamespy é multiplataforma).
+```goa_header_key``` - É a chave de criptografia para os headers da conexão obtidos a partir do primeiro payload de conexão diretamente do header do payload.
+```gs_state``` - Armazena erros de estado do próprio payload, ou configurações customizadas, como informações de flags inválidas, geralmente só ocorrendo quando uma configuração de SDK é feita inválida ou um payload de outro jogo é recebido ao invés da flag do jogo atual.
+Após essa breve introdução podemos começar a destrinchar o código revertido do procedimento: ```get_socket_gamespy_buffer```, Este procedimento é responsável por verificar se existem conteúdos a serem recebidos no socket TCP ativo estabelecido com a Masterserver da Gamespy, além de verificar a integridade do socket, bem como as ```connection_status_flag``` que indicam estado de erro na conexão:
 
 ![#59](imagens/bungie_46.png)
 
+Após as devidas verificações de integridade ocorre a leitura do payload do Socket estabelecido com a MasterServer. esse payload pode ter o tamanho máximo de ```4096 bytes```. além de termos checagens de integridade para garantir que tudo foi devidamente recebido: ```if ( readed_size == -1 || !readed_size )``` e nossa primeira chamada para a callback de desenvolvedor informando o erro de conexão ```clsGSCon->throw_gamespy_connection_error(clsGSCon, 4, g_nullserverref, clsGSCon->state);```, caso tudo ocorra bem avançamos para os próximos estágios, de calcular o tamanho do payload recebido e checagens por casos específicos de funcionamento da SDK:
 
+![#60](imagens/bungie_47.png)
 
------------------
-- Quando for explicar os parsing dividir em dois, um para bungie e outro para EA. dando enfase que os paylaods são diferentes e customizados com base nas keys e tags
+Porem a partir de agora com um buffer já lido e válido. podemos observar a chamada para ```execute_tcp_decryption(clsGSCon)```, o segundo procedimento mais importante de todos que sera de fato o responsável por parsear descriptografar, descomprimir, validas, separar flags e servers e chamar a callback para popular a Server Browser implementada pelo desenvolvedor do Jogo. no entando antes de partirmos para destrinchar o seu funcionamento em detalhes, vamos compreender como funciona a estrutura ```config_gamespy``` esta interna da própria SDK, sem acesso de quem a implementa. no entanto muito importante para o funcionamento da mesma.
 
+```c++
+struct config_gamespy {
+  UINT32 state;
+  . . .
+  UINT32 keylist;
+  . . .
+  PUCHAR pDecryptedBuffer;
+  UINT32 pDecryptBufferIn;
+  UCHAR values_to_populate[1020];
+  UINT32 num_populate;
+  UINT32 expectedelements;
+  void (__cdecl *ListCallBack)(UINT32, UINT32, UINT32, UINT32);
+  UINT32 instance;
+  . . .
+  UINT32 ip_usuario_placed_requested;
+  . . .
+  UINT32 defaultPortGameservers;
+  UINT32 callback_body_init;
+  . . .
+  UCHAR crypt_key;
+  . . .
+  UCHAR gs_query_flags;
+  UINT32 pstate;
+};
+```
 
-- Explicar como funciona o novo payload e sistemas de flags
-- Reverter o Algoritmo GOA dessa versão(explicar como funciona etc, dar a base apesar de não fazer diferença sua implementação para a solução)
-- Escrevendo um parser para o novo protocolo
-- Mostrar como são feitas as correções no GS SDK 2004
-- Mostrar as adaptações feitas no projeto do masterserver para suportar duas portas etc
-- Falar sobre o Halo Combat Evolved e a implementação nele
-- Falar sobre o Battlefield Vietnam e a implementação nele
-- Testando o jogo
+```state``` - Com funcionamento similar da estrutura gamespysocket, armazena códigos de erros e estado de processamento do parsing do payload de configuração dos servidores. utilizado apens internamente na SDK.
+```keylist``` - Armazena uma referência para as keylists do jogo atual, basicamente strings de entradas e configurações e modos de jogo a serem exibidas no server browser.
+```pDecryptedBuffer``` - Buffer do payload já descriptografado e descomprimido armazenado após o processamento do ```GOA(Gamespy Online Access)```, esse buffer é muito importante pois sera utilizado para trabalho e parseamento de servidores, keys e tags.
+```pDecryptBufferIn``` - Tamanho do buffer do payload total, sendo atualizado conforme se é trabalhado e parseado.
+```values_to_populate``` - Carrega uma lista com os servidores e suas portas definidas no payload já parseados individualmente.
+```num_populate``` - Número de servidores na lista a serem populados por meio da ListCallBack registrada pelo desenvolvedor que implementou a SDK. 
+```expectedelements``` - Tamanho de elementos de keys esperados por quem implementou a SDK, isso varia de cada jogo.
+```ListCallBack``` - A Callback registrada pelo desenvolvedor em questão que implementou a SDK, onde recebera uma lista ligada de servidores e suas devidas keys, já validadas.
+```instance``` - Intancia da Server list que armazenara os dados a serem armazenados posteriormente.
+```ip_usuario_placed_requested``` - Endereço IP do usuário ao qual soliciou a lista de servidores para a Masterserver List.
+```defaultPortGameservers``` - A porta padrão, caso a porta padrão que acompanha cada servidor no payload esteja 0x0000 ou 0xFFFF, esse valor será utilizado e assumido ao obter detalhes do servidor.
+```callback_body_init``` - Ponteiro para o início exato de onde começa os dados do payload(pulando o cabeçalho que o acompanha).
+```crypt_key``` - Chave de criptografia a ser utilizado pelo algoritmo do GOA no processo de decrypt.
+```gs_query_flags``` - Flags utilizadas pela Gamespy Masterserver durante a consulta de servidores
+```pstate``` - Apenas define o status da chave de criptografia como iniciada. 1 - Chave de criptografia definida a partir do header. e 0 - Sem chave de criptografia definida a partir do header.
 
-## Futuras ideias(REMOVE ou Virar um RoadMap, algumas coisas podem continuar)
+Após toda essa introdução podemos enfim ir direto ao segundo procedimento mais importante para compreendermos a GameSpy 2004: o ```execute_tcp_decryption```.
+
+![#61](imagens/bungie_48.png)
+
+Logo no início do procedimento podemos ver as lógicas responsáveis por obter o tamanho do payload e obter uma referência do payload armazenado na struct de conexão lida anteriormente por ```get_socket_gamespy_buffer```. o objetivo aqui é obter o offset do byte de assinaturas usado para obter a chave do body do payload do goa ```signature_offset = (*decompressed_stack_buffer ^ 0xEC) + 2;```, esse valor jamais pode ser inferior ao tamanho do total do payload, esse XOR não é atoa e nem a Soma com 2, ele esta basicamente descriptografando a informação do header. com base nesse offset temos a primeira utilização do valor ao realizar um acesso ```keyLen = decompressed_stack_buffer[signature_offset - 1] ^ 0xEA;``` com o intuíto de recuperar o tamanho da chave de criptografia do body, esse valor também é criptografado com um XOR. com o segundo uso para calcular o offset do início do body do payload em ```bufferReadedBytes[0] = keyLen + signature_offset;```, esse valor sera utilizado para descartar todo os valores do cabeçalho GOA, e posteriormente apenas trabalhar com o body do payload, o algoritmo responsável por descriptografar e inicializar a chave ocorre com a chamada para ```decompress_one(this, (int)&decompressed_stack_buffer[signature_offset], keyLen);```, não temos o intuíto de reverter o GOA e suas funcionalidades, então o substituiremos completamente posteriormente, aumentando também a velocidade de processamento do payload vindos de nossa MasterServer paralela. logo após a etapa de inicialização do GOA, temos o recalculo do deslocamento do payload ao body ```inlen -= bufferReadedBytes[0];``` e ```decompressed_stack_buffer += bufferReadedBytes[0];```, além de um field muito importante ser definido: ```this->pstate = 1;```, apresentado anteriormente como controle de que a GOA e a chave foi inicializado devidamente. concluíndo essa primeira etapa com o decrypt completo do body do payload em ```decompress(&this->crypt_key, decompressed_stack_buffer, inlen);``` a parte mais importante, porque agora os dados verdadeiros estarão visiveis para trabalho.
+
+![#62](imagens/bungie_49.png)
+
+Logo em seguida podemos perceber que o field instance é recuperado ```serverlist_instance = this->instance;``` isso porque a primeira callback da gamespy sera efetuada ao desenvolvedor posteriormente. os valores do endereço IP do requester do payload também é recuperado ```this->ip_usuario_placed_requested = *reinterpret_cast<UINT32 *>(decompressed_stack_buffer);```. após o parsing do endereço IP esses dados são apresentados ao desenvolvedor que implementou a callback ```this->ListCallBack(this, 6, g_nullserverref, serverlist_instance);``` cabendo a ele decidir se utilizara os mesmos. logo após essa primeira callback temos o parsing da porta padrão ```standardPortDefinedOnHeader = *reinterpret_cast<UINT32*>(decompressed_stack_buffer + 2);``` que sera armazenada na struct de configuração interna ```this->defaultPortGameservers = standardPortDefinedOnHeader;``` como mencionado anteriormente esses dados são usados quando a porta do servidor em questão não esteja disponível, durante a checagem de heartbet via protocolo UDP, algumas restriçõe se aplicam a esse valor padrão, nunca podendo ser ```0xFFFF``` significando que o parsing sera abortado imediatamente por erro de configuração por parte do desenvolvedor. seguido a isso temos calculos de tamanhos e offsets, até chegarmos na primeira parte mais interessante:
+
+![#63](imagens/bungie_50.png)
+
+Esta rotina é responsável por extrair cada item-key do payload, as items keys são representadas como caracteres ASCII válidos e fazem parte da configuração da estrutura da server browser list, ao qual a SDK estruturara as informações para que o desenvolvedor as utilize. a extração ocorro ao mesmo tempo que o offset atual do payload é atualizado ```decompressed_stack_buffer += frame_advance;```, o tamanho da seção que armazena as items-keys no body é utilizado nesta interação ```this->expectedelements > reupdated_populated_num``` porem não focaremos a fundo nesse tópico pois essa etapa é customizado para cada jogo, e não se alteram entre novos payload.
+
+![#64](imagens/bungie_51.png)
+
+Avançando um pouco mais durante a analise, chegamos finalmente na etapa onde os servidores são parseados a partir do payload, além é claro de atualizar os desenvolvedores que implementaram a SDK antes de iniciar a verificação UDP ao final do processamento dos servidores no payload. o procedimento ```task_list_parse_server``` tem a função de parsear cada servidor individualmente e adicionar em uma lista para posterior verificação.
+
+![#65](imagens/bungie_52.png)
+
+O procedimento em questão tem a função de validar o bloco atual de servidores baseado no byte da flag de status, as flags são totalmente customizadas pelo desenvolvedor e indicam o delocamento a seguir a ser somado para acessar a próxima flag com o bloco do próximo servidor em questão, o esquema de flag pode ser utilizado para armazenar outras informações que o desenvolvedor deseje incluir nos blocos de servidores. assim que as flags são validadas, o procedimento checa para ver se já atingiu o final do payload verificando uma constante DWORD ```LAST_SERVER_MARK_BYTES(0xFFFFFFFF)``` esse valor magico indica que não existe mais nenhuma informação e que o final foi atingido, encerrando assim o parsing de servidores. do contrario enquanto essa condição não for cumprida, continuamos com o parsing dos servidores. o procedimento ```parse_server_ip_port``` é responsável por extrair o ip ```DWORD(4 bytes)``` e a porta do servidor ```WORD(2 bytes)```, seguido de uma alocação de uma nova entrada para a lista de servidores ```alloc_server_item_for_list``` incluindo as informações parseadas. seguido disso temos duas verificações de sanidade para a nova lista criada, sendo a primeira uma verificação se o procedimento de alocação funcionou corretamente ```isInvalidServer``` e a segunda para calcular o offset da próxima entrada de servidores e início da próxima flag ```parse_server_validate```, concluído com a nova entrada inclusa na lista de servidores ```server_list_append_server``` que sera retornado na callback registrada pelo desenvolvedor após a conclusão do parsing.
+
+**Se você estiver questionando sobre a analise para o Battlefield Vietnam ?**
+Os padrões são exatamente os mesmos(tanto para o Halo CE da analise acima, quanto ao Battlefield Vietnam), não há diferença de implementação entre as SDKs nos jogos, apenas nas configurações usada por eles, ou seja, tudo que apresentamos aqui pode ser aplicado em qualquer jogo utilizando a SDK da Gamespy 2004.
+
+Vamos aplicar o que aprendemos anteriormente e analisar um payload completo identificando cada componente que o compõe(para este exemplo escolhi o Battlefield Vietnam):
+
+![#66](imagens/bungie_53.png)
+
+- Na cor roxa temos o header do payload - 37 Bytes.
+- Na cor vermelho temos o endereço IP do requester para a MasterServer (00000000) - 4 Bytes.
+- Na cor verde claro temos a porta padrão a ser utilizado durante a verificação de heartbeat via protcolo UDP (59D8) - 2 Bytes.
+- Na cor verde temos as Item-Keys discutidas anteriormente, que determinam as querys e como é organizado a server browser totalmente customizado pelo desenvolvedor - 192 Bytes ou mais.
+- Em seguida com a cor verde escuro temos os blocos de flags e servidores: 0x15 representando a flag de informação padrão. 4 Bytes representando a representação hexadecimal de um endereço IPV4. 2 Bytes representando a porta de conexão(seguind as regras já apresentadas anteriormente).
+- Finalizando com a cor azul, representando o delimitador final de parsing do payload.
+
+Enfim. chegou o momento de replicar tudo isso para manipular e criar nossos próprios payloads de servidores agora.
+
+![#66](imagens/bungie_54.jpg)
+
+#### Escrevendo um parser de pacotes para Gamespy 2004
+
+Vamos agora reimplementar totalmente o parser para a Gamespy 2004 com base nos nossos conhecimentos adquiridos com a analise. Durante o desenvolvimentodo parser foquei em separar lógicas diferentes para o Halo CE e Battlefield Vietnam, porem o conceito permanecera sempre o mesmo para essa versão da GameSpy.
+
+Nesta demonstração utilizarei o parser do Battlefield Vietnam, no entanto o código fonte do parser do Halo CE é muito similar e tudo isso estara disponível para consulta e pesquisas futuras no repositório do projeto. colocarei algumas metas que devemos cumprir ao final deste tópico:
+
+1. Parsear completamente os payload
+2. Organizar as informações do payload de maneira concisa
+2. Adicionar e Remover servidores
+3. Alterar requester IP
+4. Exibir todo os servidores e informações pertinentes sobre os payloads
+5. Gerar um novo payload com informações alteradas
+
+Organizei projeto dentro do próprio projeto "EAGamesNetworkFrameParser", o mesmo já usado ao demonstrar o parser para a Gamespy 2002. separei a lógica em dois arquivos ```BFVietnamFrameNetParser.cc``` e ```BFVietnamFrameNetParser.hh```.
+
+No arquivo de cabeçalho organizei as informações de configurações e estrutura da classe e criei uma estrutura para organizar os endereços IP e Portas de servidores, ```BFVietnamgameServer```:
+
+```c++
+typedef struct BFVietnamgameServer {
+
+  /*
+    Server IP
+  */
+  uint32_t dwServerIP;
+
+  /*
+    Server Port
+  */
+  uint16_t wServerPort;
+
+};
+```
+
+Essa estrutura sera populada e armazenada em um vector para cada um dos servidores presentes no payload parseado:
+
+```c++
+/*
+ List with all servers and new servers into a payload
+*/
+std::vector<BFVietnamgameServer> m_BfVietnamServers;
+```
+
+Agora em relação as informações de endereço IP do requester para a GameSpy e Porta Padrão dos servidores, tive a abordagem de armazena-los em fields dedicados:
+
+```c++
+/*
+  Requester IP Address
+*/
+uint32_t m_dwRequesterIP{ 0 };
+
+/*
+  Default Gameservers query port
+*/
+uint16_t m_dDefaultPort{ 0 };
+```
+
+Além disso, em relação as constantes e valores padrões para as flags utilizadas pela SDK, também criei fields dedicados para cada um, para que possamos trabalhar de uma forma mais tranquila e organizadas posteriomente:
+
+```c++
+/*
+  New flag delimiter flag
+*/
+const unsigned char m_ucServerDelimiterFlag{ 0x15 };
+
+/*
+  Payload signature flag
+*/
+const unsigned char m_frameEndSignature[5]{ 0x00, 0xFF, 0xFF, 0xFF, 0xFF };
+
+/*
+  Max payload size per server browser query
+*/
+const int m_MAX_PAYLOAD_SIZE{ 4096 };
+```
+
+Se você estiver se perguntando como ficaram os métodos desta classe, eles ficaram desta forma:
+
+```c++
+
+//1º Construtor da classe que sera responsável por receber um arquivo do payload, extrair todas as informações e organiza-las.
+BFVietnamFrameNetParser(std::string& strFilePath);
+
+//2º Método responsável por obter o endereço IP do autor da requisição para a MasterServer e retorna-lo formatado no padrão IPV4.
+auto getRequesterIp() -> std::string;
+
+//3º Método responsável por definir uma novo endereço IP para o requester da MasterServer.
+auto setRequesterIp(const char* chIpv4) -> void;
+
+//4º Método responsável por adicionar um novo servidor ao payload, para isso recebendo como entrada um endereço IPV4 e uma porta
+auto addServer(const char* chIpv4, const char* chPort) -> void;
+
+//5º Método reponsável por remover um servidor do payload baseado no índice dele na lista de servidor
+auto deleteServer(int index) -> void;
+
+//6º Método responsável por retornar o novo payload com base no contexto atual da classe do payload em memória
+auto getNewPayload() -> unsigned char*;
+
+//7º Método responsável por retornar o payload raw já formatado com estado atualizado em memória
+auto getRawPayload() -> unsigned char*;
+
+//8º Método responsáevl por gravar o payload atualizado em disco
+auto writeNewPayload(std::string& path) -> void;
+
+//9º Método operator responsável por obter uma std::string com todas as informações dos servidores presentes em um payload
+operator std::string() const;
+
+//10º Destructor para cleanup das informações usadas por nossa classe de parser de payload
+~BFVietnamFrameNetParser();
+  
+```
+
+Escolhi alguns métodos para comentar de maneira macro e entender como eles funcionam, sem se aprofundar muito técnicamente sobre como atuam, para isso recomendo que você **baixe o código e faça seus próprios experimentos.**
+
+Iniciando pelo construtor ```BFVietnamFrameNetParser```, responsável por parsear cada parte do payload:
+
+```c++
+
+//Extraindo o header do payload, apelidado aqui por mim de "payloadSignature".
+std::memcpy(this->m_payloadSignature, pSeek, sizeof(this->m_payloadSignature));
+
+//Avançando pelo tamanho do offset do header
+pSeek += sizeof(this->m_payloadSignature);
+
+//Extraindo o endereço IP do requester para a GameSpy
+std::memcpy(&this->m_dwRequesterIP, pSeek, sizeof(this->m_dwRequesterIP));
+
+//Avançando pelo tamanho do offset do IP do requester
+pSeek += sizeof(this->m_dwRequesterIP);
+
+//Extraindo a porta padrão definida pelo desenvolvedor que utilizou a SDK da GameSpy
+std::memcpy(&this->m_dDefaultPort, pSeek, sizeof(this->m_dDefaultPort));
+
+//Avançando pelo tamanho do offset da porta
+pSeek += sizeof(this->m_dDefaultPort);
+
+//Extraindo o Item-keys do payload
+std::memcpy(this->m_payloadGameConfiguration, pSeek, sizeof(this->m_payloadGameConfiguration));
+
+//Avançando o tamanho do Item-keys + 1 byte para a primeira flag do bloco de servidores
+pSeek += sizeof(this->m_payloadGameConfiguration) + 1; // +1 for ignore (magic flag 0x15) the first server delimiter
+
+//Parseando o bloco dos servidores e flags, até encontrar o magic final.
+while (std::memcmp(pSeek, m_frameEndSignature, 5) != 0) {
+
+        //Verificando se temos alguma flag de delimitador de servidor sendo utilizado, caso tenha avançaremos +1 byte para obter o início do próximo bloco.
+	if (std::memcmp(pSeek, &this->m_ucServerDelimiterFlag, 1) == 0) pSeek += 1;
+
+        //Iniciando uma nova esturura para armazenarmos os dados dos servidores extraídos.
+	BFVietnamgameServer bfVs;
+	
+        //Parseando o endereço IP do servidor
+	std::memcpy(&bfVs.dwServerIP, pSeek, sizeof(bfVs.dwServerIP));
+	
+        //Avançando para o próximo offset
+	pSeek += sizeof(bfVs.dwServerIP);
+
+        //Parseando a porta do servidor
+	std::memcpy(&bfVs.wServerPort, pSeek, sizeof(bfVs.wServerPort));
+
+        //Avançando para o próximo offset
+	pSeek += sizeof(bfVs.wServerPort);
+
+        //Armazenando a estrutura com os dados no nosso vector final, para posterior uso.
+	this->m_BfVietnamServers.push_back(bfVs);
+
+}
+```
+
+O código acima é responsável por parsear cada um dos dados, a primeiro momento, o header do payload, seguido do endereço IP do requester, a porta padrão dos servidores, seguido do parser da Item-Keys definidas como configuração específicas para o jogo em questão e finalizando com o parser total de cada um dos servidores e tags, até encontrar a assinatura final do payload com o magic ```0xFFFFFFFF```.
+
+O método ```writeNewPayload``` é responsável por fazer o processo inverso do nosso construtor, ele criara um novo payload para armazenar todas as alterações fazendo exatamente o processo reverso de um parser, adicionando cada bloco como: cabeçalho, IP requester, porta padrão, Item-Keys e finalizando com os blocos de servidores e suas devidas tags e com o Magic ao final, gravando tudo isso num arquivo em disco para ser utilizado pela MasterServer Provider.
+
+Além do construtor e da lógica do parser apresentado, a lógica dos demais procedimentos se parecem muito com o que vimos anteriormente no tópico da GameSpy 2002, sendo assim, por já termos visto antes, resolvi pular a explicação dos seguintes métodos:
+
+```c++
+auto getRequesterIp() -> std::string;
+auto setRequesterIp(const char* chIpv4) -> void;
+auto addServer(const char* chIpv4, const char* chPort) -> void;
+auto deleteServer(int index) -> void;
+auto getNewPayload() -> unsigned char*;
+auto getRawPayload() -> unsigned char*;
+operator std::string() const;
+```
+
+**! No entanto mais uma vez cabe-se destacar que eles se encontram disponíveis para consulta do próprio repositório do projeto**
+
+Após escrevermos nosso parser para a GameSpy 2004. chegou enfim o momento de começarmos a corrigi-la com base nos conhecimentos que adquirimos de maneira que tenhamos total controle sobre a SDK.
+
+![#67](imagens/bungie_55.png)
+
+#### Analisando e criando ideias para modificações GameSpy 2004
+
+Agora de maneira similar ao feito para a GameSpy 2002. vamos colocar a mão na massa e reimplementar as lógicas de recebimento de payloads da MasterServer Provider original para aceitar nossos próprios payloads e renderiza-los na server browser list dos jogos que implementam a GameSpy 2004. o novo módulo para essa tarefa foi apelidado de ```kuromi```, e seu objetivo é modificar de maneira eficaz e otimizada toda a lógica e handlers para nosso próprio domínio e controle.
+
+#### Analisando padrões de código da GameSpy 2004
+
+Para modificar a SDK da Gamespy criei um novo projeto apelidado de ```Kuromi```, desenvolvido em C++ e Microsoft Macro Assembly. este modulo é capaz de identificar padrões de código utilizados pela SDK e redirecionar a execução de instruções originais para rotinas de nosso próprio controle, bem como modificar todos os endpoints utilizados pela MasterServer Provider original para nossos próprios, de forma que possamos completamente emular o funcionamento dos componentes da GameSpy ao nosso próprio dispor, algo um pouco similar ao que aprendemos no artigo com o modulo ```kurumi```, porem sem muitas limitações impostas pelo jogo antigo da EA.
+
+Kuromi é um modulo extremamente simples e inteligente, utilizando apenas os seguintes novos procedimentos para trabalho:
+
+- new_get_socket_gamespy_buffer_gs2004_stub
+- new_goa_decrypt_buffer_gs2004_stub
+
+Com apenas esses dois procedimentos reimplementei a lógica completa dos procedimentos originais utilizando Macro Assembly.
+
+```new_get_socket_gamespy_buffer_gs2004_stub```:
+
+![#67](imagens/bungie_56.png)
+
+```new_goa_decrypt_buffer_gs2004_stub```:
+
+![#68](imagens/bungie_57.png)
+
+Além das rotinas novas modificadas, também aplicamos todas as estruturas revertidas para poder manipular os dados e informações da SDK de uma maneira muito mais eficiente no código x86:
+
+![#69](imagens/bungie_58.png)
+
+Similar ao modulo ```kurumi``` este modulo também é capaz de escanear os padrões utilizados pela GameSpy de maneira a encontrar os endereços corretos para redirecionar a execução do código original:
+
+![#70](imagens/bungie_59.png)
+
+Esse escaneamento acontece apenas no range da seção de código executável conforme os endereços são encontrados são armazenados na estrutura de configuração ```GS2004_NETWORK```, para posterior redirecionamento.
+
+Além da busca pelos procedimentos a serem redirecionados temos outra rotina muito importante, responsável por recuperar o field ```MasterServer``` da ```GS2004_NETWORK``` utilizando-o para alterar os endpoints originais da SDK pelos de nosso controle:
+
+![#71](imagens/bungie_60.png)
+
+E com essas rotinas concluímos completamente as modificações necessarias para corrigir a GameSpy 2004 e redireciona-la para noss próprio controle.
+
+![#72](imagens/bungie_61.png)
+
+Você deve estar se perguntando, similar ao GameSpy 2002, se isso ficou muito simples. No entanto esse de fato é o objetivo, não tem porque ser complicado o nosso objetivo desde que começamos a reverter a SDK era compreender de uma maneira profunda seu funcionamento e essa dedicação acaba refletindo na qualidade das manipulações que fazemos nela. por isso um código tão simplificado, estável e seguro.
+
+Enfim vamos a nossa parte final, reescrever nossa MasterServer Provider para termos tudo efetivamente em funcionamento.
+
+#### Reescrevendo a MasterServer Provider para a GameSpy 2004
+
+Para atender e suportar a Gamespy 2004 adaptei o mesmo código que anteriormente vimos no trecho que estudamos da GameSpy 2002. a diferença principal aqui é que vamos suportar a conexão através de duas portas TCP diferentes, sendo assim trabalhei com dois sockets em vez de um único socket:
+
+![#73](imagens/bungie_62.png)
+
+O funcionamento base da MasterServer Provider foi um pouco modificado, uma TASK é criada para cada um dos sockets o socket que responder de maneira asincrona gerencia a conexão recebida direcionando ao devido procedimento com o prefixo ```HandleGSxxxxClients```:
+
+![#74](imagens/bungie_63.png)
+
+E de maneira similar ao que já vimos na GameSpy 2002, respondemos a solicitações vindas de nosso cliente da maneira que a SDK necessita e ao final de tudo enviando o payload completo para o cliente:
+
+![#75](imagens/bungie_64.png)
+
+Neste exemplo, quando um novo cliente conectar pela porta da Gamespy 2004, verificaremos se a query contém ou battlefield vietnam ou Halo, e com base nisso apenas respondemos o devido payload de configuração gerado com nosso algoritmo de parser anteriormente explicado, e de maneira similar isso ocorre também com a GameSpy 2002:
+
+![#76](imagens/bungie_65.png)
+
+No entanto como já sabemos, ela requer muito mais interações e possuí muito mais querys para configurações do payload. algo que a GameSpy decediu alterar na versão de 2004.
+
+Não ensinarei o processo para deploy da MasterServer Provider aqui, pois já foi ensinado durante a explicação da Gamespy 2002, sendo assim vamos enfim aos testes de nossas implementações.
+
+![#77](imagens/bungie_66.png)
+
+#### Testando o projeto
+
+Vamos aos testes. e para cada um deles separei dois vídeos demonstrando o funcionamento do nosso projeto, e os servidores sendo exibidos novamente na server browser list, ou até uma GamePlay.
+
+**Testando o Halo CE**
+
+[![KewGamespy - HALO CE DEMO](https://img.youtube.com/vi/2NNq4UT9Wgs/0.jpg)](https://www.youtube.com/watch?v=2NNq4UT9Wgs)
+
+**Testando o Battlefield Vietnam**
+
+[![KewGamespy - HALO CE DEMO](https://img.youtube.com/vi/EmE7mOZOakc/0.jpg)](https://www.youtube.com/watch?v=EmE7mOZOakc)
+
+## Ideias Extras
 
 ##### Gameloader
 
-TODO
+Se você estiver perguntando como os modulos são injetados nos jogos da GameSpy para trabalho, ou como a etapa de desenvolvimento acontece. tudo isso ocorre através de um software que fica escondido na trayicon do Windows chamado de ```KewGameLoader``` ou para os intimos ```KewGameSpyEmulatorClient```.
+
+KewGameLoader tem as seguintes capacidades:
+
+- Identificar quando o processo dos jogos utilizando alguma SDK da GameSpy são iniciados e injetar os modulos que as corrigem
+- Estabelecer uma interface de debug funcional para que o desenvolvedor e contribuidor do projeto possa interagir e monitorar performance e bugs do projeto.
+- Exibir o status de jogo RPC no Discord usando a SDK de Desenvolvedor.
+
+O KewGameLoader é um componente muito importante para tudo isso, vamos explora-lo de maneira técnica a partir de agora.
+
+- **Identificando processos de jogos GameSpy via WMI** o KewGameLoader atráves da ```KewUsermodeProcessMonitor``` utiliza uma implementação de Query via WMI através de COM, de maneira a ser notificado sempre que um processo novo for criado pelo sistema operacional, fazendo com que tenhamos um impacto minímo no sistema operacional de nossos usuários. caso você tenha alguma curiosidade de como isso funciona consulte os arquivos ```KewUsermodeProcessMonitor.cc``` e ```KewUsermodeProcessMonitor.hh```.
+
+- **Interface de debug** através da ```GameIPC``` em uma thread segura, o KewGameLoader, estabelece um PIPE Nomeado com o Modulo presente no jogo(Kurumi ou Kuromi) recebendo informações muito específcias de debuging e desempenho que são exibidas na tela do próprio jogo com um overlay. caso tenha curiosidade consulte o arquivo de cabeçalho ```GameIPC.hh```.
+
+- **Interface de Overlay Segura** através da ```DevOverlayFrame``` o KewGameLoader pode renderizar informações na tela do jogo utilizando OpenGl mais atualizado sem que esse overlay ocorra internamente, podendo em caso de algum problema ser encerrado externamente. caso tenha curiosidade consulte os arquivos ```DevOverlayFrame.cc``` e ```DevOverlayFrame.hh```.
+
+- **Discord RPC** através do próprio arquivo principal ```KewGameLoader.hh``` adicionamos suporte a biblioteca ```Discord Developers SDK``` para que os jogos e status sejam exibidos na plataforma, esse foi um recurso solicitado pelos testers do projeto.
+
+![#78](imagens/kewgameloader1.png)
+
+![#79](imagens/kewgameloader2.png)
+
+![#80](imagens/kewgameloader3.png)
+
+**KewGameLoader** esta em constante evolução, pode ser que no futuro novos recurso sejam incluídos. apesar dessa ser uma pesquisa inicial e base para permitir que os jogos nunca morram.
 
 ##### Dicas de modo Janela para Desenvolvimento
 
@@ -824,17 +1222,11 @@ Para a ```tea_del_kew_encrypt```:
 No processo de criptografia em si:
 - Temos uma permutação inicial com kew_box e os valores das chaves, usando um laço de repetição indo de 0 até 2047:
 
-$$v_1 \leftarrow v_1 \oplus \text{ kew\_box}[i\%12] \oplus (i \times 0x44444444 \oplus\sim i)$$
-
-$$v_0 \leftarrow v_0 \oplus \text{ kew\_box}[i\%12] \oplus (i \times 0x44444444 \oplus\sim i)$$
+![#81](imagens/kewtea1.png)
 
 - Em seguida temos a aplicação da Transformação de Feistel modificada, usando um laço de repetição indo de 0 até 2047:
 
-$$v_0 \leftarrow v_0 + \sim ((v_1 << 4) \oplus (v_1 >> 5) + v_1) \oplus (\text{sum} + k_0)$$
-
-$$\text{sum} \leftarrow \text{sum} + \text{delta}$$
-
-$$v_1 \leftarrow v_1 + \sim ((v_0 << 4) \oplus (v_0 >> 5) + v_0) \oplus (\text{sum} + k_1)$$
+![#82](imagens/kewtea2.png)
 
 Para a ```tea_del_kew_decrypt```:
 
@@ -845,23 +1237,15 @@ Para a ```tea_del_kew_decrypt```:
 No processo de descriptografia em si:
 - Invertemos o processo de criptografia e primeiro faremos a aplicação inversada Transformação de Feistel modificada, usando um laço de repetição indo de 0 até 2047:
 
-$$v_1 \leftarrow v_1 - \sim ((v_0 << 4) \oplus (v_0 >> 5) + v_0) \oplus (\text{sum} + k_1)$$
-
-$$\text{sum} \leftarrow \text{sum} - \text{delta}$$
-
-$$v_0 \leftarrow v_0 - \sim ((v_1 << 4) \oplus (v_1 >> 5) + v_1) \oplus (\text{sum} + k_0)$$
+![#83](imagens/kewtea3.png)
 
 - Por último em seguida fazemos a permutação inversa usando a ```kew_box```e os valores das chaves, usando um laço de repetição indo de 0 até 2047:
 
-$$v_1 \leftarrow v_1 \oplus \text{kew\_box}[i\%12] \oplus (i \times 0x44444444 \oplus\sim v_0)$$
-
-$$v_0 \leftarrow v_0 \oplus \text{kew\_box}[i\%12] \oplus (i \times 0x44444444 \oplus\sim v_1)$$
+![#84](imagens/kewtea4.png)
 
 Como você pode perceber eu tive um cuidado ao escrever o ```TeaDelKew```, fique livre para melhorar ou implementar de vez no projeto.
 
 O código fonte esta disponível no repositório em um projeto a parte apelidado de ```TeaDelKewTests``` e seu conteúdo contém apenas um header e uma namespace apelidado de ```TeaDelKewAlgo.hh``` com a devida implementação.
-
-ADICIONAR AQUI A SCREENSHOT@@@@@@@@@@@@@@@@@@@@@
 
 ##### Error track com MiniDumps
 
@@ -872,10 +1256,6 @@ Para uma maior estabilidade da solução proposta neste artigo, todos os módulo
 - Para o módulo Kuromi todos os MiniDumps são armazenados no diretório temporário em uma pasta apelidada de "KuromiGS2004", por exemplo: C:\Users\YOURUSER\AppData\Local\Temp\KuromiGS2004\.
 
 Todos os dumps são gerados com base no padrão Microsoft(momento do crash + prefixo dmp).
-
-##### Discord RPC for Gaming
-
-aaa
 
 ## Bla, Bla Juridico
 
@@ -890,6 +1270,11 @@ Outros detalhes necessários:
 - Efetuei diversas propostas ao suporte técnico da EA Games para adquirir a versão digital de Battlefield Vietnam. ambos insistiram que não era um jogo mais suportado e que não ligavam para o que ocorresse com ele. Um ponto positivo do suporte técnico da EA foi a tentativa por parte deles de ativarem a versão digital na minha conta e uma excelente atenção, até parabenizando pelo cuidado com as cópias desses clássicos.
 
 Sendo assim tudo que foi necessario para construção deste artigo. desde a licença de softwares. como os próprios jogos são originais. e saliento que em nenhum momento uma versão jogavel sera disponibilizada(partes de arquivos de jogos bem como links para Websites de terceiros que contém devidos downloads não se enquadram em uma violação da lei da Seção 107 da Lei de Direitos Autorais de 1976 do Brasil), saliento que arquivos de patch ou melhoria também não se enquadram como uma violação de direito autoral, dessa forma o mesmo se aplica a todo código fonte e material gerado com este material.
+
+## Agradecimentos
+
+- Anderson Leite(github.com/buzzer-re): Por ter revisado meu artigo e colaborado com sugestões e aprimoramentos.
+- Akko(github.com/AkkoS2): Por ter testado as funcionalidades em Gameplay.
 
 ## References
 

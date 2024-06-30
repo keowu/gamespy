@@ -64,7 +64,7 @@ private:
 	/*
 		Max payload size per server browser query
 	*/
-	const int m_MAX_PAYLOAD_SIZE = 4096;
+	const int m_MAX_PAYLOAD_SIZE{ 4096 };
 
 	/*
 		Raw frame payload
