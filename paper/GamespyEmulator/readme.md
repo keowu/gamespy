@@ -1,4 +1,4 @@
-# Reescrevendo totalmente o suporte da GameSpy 2000 a 2004 usando engenharia reversa em jogos da EA e Bungie sem ser processado por direito autoral
+# Fazendo o trabalho das empresas de jogos e reescrevendo totalmente o suporte da GameSpy 2000 a 2004 usando engenharia reversa em jogos da EA e Bungie e dando bypass nos processos que isso poderia acarretar
 
 Author: João Vitor (@Keowu) - Security Researcher
 
@@ -10,7 +10,38 @@ Este artigo visa documentar e também apresentar meus passos durante os estágio
 
 ## Table of Contents
 1. [Introdução](#introdução)
-2. TODO
+2. [Uma leve motivação](#uma-leve-motivação)
+3. [GameSpy da glória a Decadência](#gamespy-da-glória-a-decadência)
+4. [Battlefield 1942](#battlefield-1942)
+    1. [Analisando binário](#analisando-binário)
+    2. [Revertendo pacotes](#revertendo-pacotes)
+    3. [Revertendo o código fonte e implementação da Gamespy](#revertendo-o-código-fonte-e-implementação-da-gamespy)
+    4. [[Bonus] Explorando segurança das chaves de registro para abusar do problema de serial dos sevidores para desconectar jogadores](#bonus-explorando-segurança-das-chaves-de-registro-para-abusar-do-problema-de-serial-dos-sevidores-para-desconectar-jogadores)
+    5. [Como era gerado a hash para a serial key ? a mesma usada nos servidores para verificação ?](#como-era-gerado-a-hash-para-a-serial-key--a-mesma-usada-nos-servidores-para-verificação-)
+    6. [Analisando a implementação de verificação de servidores da Gamespy SDK no Battlefield 1942](#analisando-a-implementação-de-verificação-de-servidores-da-gamespy-sdk-no-battlefield-1942)
+    7. [Escrevendo um parser para pacotes](#escrevendo-um-parser-para-pacotes)
+    8. [Analisando e criando ideias para modificações](#analisando-e-criando-ideias-para-modificações)
+    9. [Analisando padrões de código](#analisando-padrões-de-código)
+    10. [Escrevendo uma nova Master Server List provider](#escrevendo-uma-nova-master-server-list-provider)
+    11. [Testando o projeto](#testando-o-projeto)
+5. [A Gamespy de 2004 (Usada pela Bungie e EA)](#a-gamespy-de-2004-usada-pela-bungie-e-ea)
+    1. [Um pouco do posicionamento da EA Games x Bungie](#um-pouco-do-posicionamento-da-ea-games-x-bungie)
+    2. [Como ocorre a comunicação de rede](#como-ocorre-a-comunicação-de-rede)
+    3. [Analisando os Pacotes](#analisando-os-pacotes)
+    4. [Escrevendo um parser de pacotes para Gamespy 2004](#escrevendo-um-parser-de-pacotes-para-gamespy-2004)
+    5. [Analisando e criando ideias para modificações GameSpy 2004](#analisando-e-criando-ideias-para-modificações-gamespy-2004)
+    6. [Analisando padrões de código da GameSpy 2004](#analisando-padrões-de-código-da-gamespy-2004)
+    7. [Reescrevendo a MasterServer Provider para a GameSpy 2004](#reescrevendo-a-masterserver-provider-para-a-gamespy-2004)
+    8. [Testando o projeto](#testando-o-projeto-1)
+6. [Ideias Extras](#ideias-extras)
+    1. [Gameloader](#gameloader)
+    2. [Dicas de modo Janela para Desenvolvimento](#dicas-de-modo-janela-para-desenvolvimento)
+    3. [TeaDelKew](#teadelkew)
+    4. [Error track com MiniDumps](#error-track-com-minidumps)
+7. [Bla, Bla Juridico](#bla-bla-juridico)
+8. [Revisores/Agradecimentos especiais](#revisoresagradecimentos-especiais)
+9. [Conclusão](#conclusão)
+10. [References](#references)
 
 ### Uma leve motivação
 
@@ -785,14 +816,15 @@ struct gamespysocket {
 ```
 Esta struct é importante e utilizada para armazenar todos os estados e configurações referidos as conexões feitas pela SDK da Gamespy 2004. cada field possui um significado que vamos detalhar neste momento:
 
-```connection_status_flag``` - Armazena flags de estado de conexão atualmente assumido pela SDK, flags como: Conectado, disconectado, socket error, timeout entre outras.
-```pGamespyBuffer``` - Armazena a referência ao payload lido a partir do socket estabelecido com a gamespy.
-```actual_size``` - Armazena informações referente ao tamanho do payload armazenado, esse campo é extremamente volatil e variável, então nem a própria SDK o considera informação confiável(já que a o decorrer da explicação entenderemos como de fato fazem a checagem pelo tamanho).
-```throw_gamespy_connection_error``` - Armazena o endereço da função de callback para erros de conexão definidos por quem implementa a SDK.
-```state``` - Estado é utilizado para indicar o estado de onde ocorreu determinada gamespy connection error, basicamente o motivo de ter ocorrido. diferente da connection_status_flag que é interna, este valor é retornado ao callback registrado pelo desenvolvedor.
-```socket``` - É um referência SOCKET convencional estabelecida usando a API do sistema operacional ao qual foi compilada(isso varia entre sistemas operacionais já que a Gamespy é multiplataforma).
-```goa_header_key``` - É a chave de criptografia para os headers da conexão obtidos a partir do primeiro payload de conexão diretamente do header do payload.
-```gs_state``` - Armazena erros de estado do próprio payload, ou configurações customizadas, como informações de flags inválidas, geralmente só ocorrendo quando uma configuração de SDK é feita inválida ou um payload de outro jogo é recebido ao invés da flag do jogo atual.
+- ```connection_status_flag``` - Armazena flags de estado de conexão atualmente assumido pela SDK, flags como: Conectado, disconectado, socket error, timeout entre outras.
+- ```pGamespyBuffer``` - Armazena a referência ao payload lido a partir do socket estabelecido com a gamespy.
+- ```actual_size``` - Armazena informações referente ao tamanho do payload armazenado, esse campo é extremamente volatil e variável, então nem a própria SDK o considera informação confiável(já que a o decorrer da explicação entenderemos como de fato fazem a checagem pelo tamanho).
+- ```throw_gamespy_connection_error``` - Armazena o endereço da função de callback para erros de conexão definidos por quem implementa a SDK.
+- ```state``` - Estado é utilizado para indicar o estado de onde ocorreu determinada gamespy connection error, basicamente o motivo de ter ocorrido. diferente da connection_status_flag que é interna, este valor é retornado ao callback registrado pelo desenvolvedor.
+- ```socket``` - É um referência SOCKET convencional estabelecida usando a API do sistema operacional ao qual foi compilada(isso varia entre sistemas operacionais já que a Gamespy é multiplataforma).
+- ```goa_header_key``` - É a chave de criptografia para os headers da conexão obtidos a partir do primeiro payload de conexão diretamente do header do payload.
+- ```gs_state``` - Armazena erros de estado do próprio payload, ou configurações customizadas, como informações de flags inválidas, geralmente só ocorrendo quando uma configuração de SDK é feita inválida ou um payload de outro jogo é recebido ao invés da flag do jogo atual.
+
 Após essa breve introdução podemos começar a destrinchar o código revertido do procedimento: ```get_socket_gamespy_buffer```, Este procedimento é responsável por verificar se existem conteúdos a serem recebidos no socket TCP ativo estabelecido com a Masterserver da Gamespy, além de verificar a integridade do socket, bem como as ```connection_status_flag``` que indicam estado de erro na conexão:
 
 ![#59](imagens/bungie_46.png)
@@ -829,21 +861,21 @@ struct config_gamespy {
 };
 ```
 
-```state``` - Com funcionamento similar da estrutura gamespysocket, armazena códigos de erros e estado de processamento do parsing do payload de configuração dos servidores. utilizado apens internamente na SDK.
-```keylist``` - Armazena uma referência para as keylists do jogo atual, basicamente strings de entradas e configurações e modos de jogo a serem exibidas no server browser.
-```pDecryptedBuffer``` - Buffer do payload já descriptografado e descomprimido armazenado após o processamento do ```GOA(Gamespy Online Access)```, esse buffer é muito importante pois sera utilizado para trabalho e parseamento de servidores, keys e tags.
-```pDecryptBufferIn``` - Tamanho do buffer do payload total, sendo atualizado conforme se é trabalhado e parseado.
-```values_to_populate``` - Carrega uma lista com os servidores e suas portas definidas no payload já parseados individualmente.
-```num_populate``` - Número de servidores na lista a serem populados por meio da ListCallBack registrada pelo desenvolvedor que implementou a SDK. 
-```expectedelements``` - Tamanho de elementos de keys esperados por quem implementou a SDK, isso varia de cada jogo.
-```ListCallBack``` - A Callback registrada pelo desenvolvedor em questão que implementou a SDK, onde recebera uma lista ligada de servidores e suas devidas keys, já validadas.
-```instance``` - Intancia da Server list que armazenara os dados a serem armazenados posteriormente.
-```ip_usuario_placed_requested``` - Endereço IP do usuário ao qual soliciou a lista de servidores para a Masterserver List.
-```defaultPortGameservers``` - A porta padrão, caso a porta padrão que acompanha cada servidor no payload esteja 0x0000 ou 0xFFFF, esse valor será utilizado e assumido ao obter detalhes do servidor.
-```callback_body_init``` - Ponteiro para o início exato de onde começa os dados do payload(pulando o cabeçalho que o acompanha).
-```crypt_key``` - Chave de criptografia a ser utilizado pelo algoritmo do GOA no processo de decrypt.
-```gs_query_flags``` - Flags utilizadas pela Gamespy Masterserver durante a consulta de servidores
-```pstate``` - Apenas define o status da chave de criptografia como iniciada. 1 - Chave de criptografia definida a partir do header. e 0 - Sem chave de criptografia definida a partir do header.
+- ```state``` - Com funcionamento similar da estrutura gamespysocket, armazena códigos de erros e estado de processamento do parsing do payload de configuração dos servidores. utilizado apens internamente na SDK.
+- ```keylist``` - Armazena uma referência para as keylists do jogo atual, basicamente strings de entradas e configurações e modos de jogo a serem exibidas no server browser.
+- ```pDecryptedBuffer``` - Buffer do payload já descriptografado e descomprimido armazenado após o processamento do ```GOA(Gamespy Online Access)```, esse buffer é muito importante pois sera utilizado para trabalho e parseamento de servidores, keys e tags.
+- ```pDecryptBufferIn``` - Tamanho do buffer do payload total, sendo atualizado conforme se é trabalhado e parseado.
+- ```values_to_populate``` - Carrega uma lista com os servidores e suas portas definidas no payload já parseados individualmente.
+- ```num_populate``` - Número de servidores na lista a serem populados por meio da ListCallBack registrada pelo desenvolvedor que implementou a SDK. 
+- ```expectedelements``` - Tamanho de elementos de keys esperados por quem implementou a SDK, isso varia de cada jogo.
+- ```ListCallBack``` - A Callback registrada pelo desenvolvedor em questão que implementou a SDK, onde recebera uma lista ligada de servidores e suas devidas keys, já validadas.
+- ```instance``` - Intancia da Server list que armazenara os dados a serem armazenados posteriormente.
+- ```ip_usuario_placed_requested``` - Endereço IP do usuário ao qual soliciou a lista de servidores para a Masterserver List.
+- ```defaultPortGameservers``` - A porta padrão, caso a porta padrão que acompanha cada servidor no payload esteja 0x0000 ou 0xFFFF, esse valor será utilizado e assumido ao obter detalhes do servidor.
+- ```callback_body_init``` - Ponteiro para o início exato de onde começa os dados do payload(pulando o cabeçalho que o acompanha).
+- ```crypt_key``` - Chave de criptografia a ser utilizado pelo algoritmo do GOA no processo de decrypt.
+- ```gs_query_flags``` - Flags utilizadas pela Gamespy Masterserver durante a consulta de servidores
+- ```pstate``` - Apenas define o status da chave de criptografia como iniciada. 1 - Chave de criptografia definida a partir do header. e 0 - Sem chave de criptografia definida a partir do header.
 
 Após toda essa introdução podemos enfim ir direto ao segundo procedimento mais importante para compreendermos a GameSpy 2004: o ```execute_tcp_decryption```.
 
@@ -1267,14 +1299,18 @@ Ao escrever este artigo um advogado foi consultado. desta forma fui aconselhado 
 
 Outros detalhes necessários:
 
-- Efetuei diversas propostas ao suporte técnico da EA Games para adquirir a versão digital de Battlefield Vietnam. ambos insistiram que não era um jogo mais suportado e que não ligavam para o que ocorresse com ele. Um ponto positivo do suporte técnico da EA foi a tentativa por parte deles de ativarem a versão digital na minha conta e uma excelente atenção, até parabenizando pelo cuidado com as cópias desses clássicos.
+- Efetuei diversas propostas ao suporte técnico da EA Games para adquirir a versão digital de Battlefield Vietnam. ambos insistiram que não era um jogo mais suportado e que não ligavam para o que ocorresse com ele. Um ponto positivo do suporte técnico da EA foi a tentativa por parte deles de ativarem a versão digital na minha conta e uma excelente atenção, até parabenizando pelo cuidado com as cópias desses clássicos e o espanto de quem me atendeu de tentar descobrir como consegui uma cópia lacrada desse jogo.
 
-Sendo assim tudo que foi necessario para construção deste artigo. desde a licença de softwares. como os próprios jogos são originais. e saliento que em nenhum momento uma versão jogavel sera disponibilizada(partes de arquivos de jogos bem como links para Websites de terceiros que contém devidos downloads não se enquadram em uma violação da lei da Seção 107 da Lei de Direitos Autorais de 1976 do Brasil), saliento que arquivos de patch ou melhoria também não se enquadram como uma violação de direito autoral, dessa forma o mesmo se aplica a todo código fonte e material gerado com este material.
+Sendo assim tudo que foi necessario para construção deste artigo. desde a licença de softwares. como os próprios jogos são originais. e saliento que em nenhum momento uma versão jogavel sera disponibilizada(partes de arquivos de jogos bem como links para Websites de terceiros que contém devidos downloads não se enquadram em uma violação da lei da Seção 107 da Lei de Direitos Autorais de 1976 do Brasil), saliento que arquivos de patch ou melhoria também não se enquadram como uma violação de direito autoral, dessa forma o mesmo se aplica a todo código fonte e material gerado com esta pesquisa.
 
-## Agradecimentos
+## Revisores/Agradecimentos especiais
 
 - Anderson Leite(github.com/buzzer-re): Por ter revisado meu artigo e colaborado com sugestões e aprimoramentos.
 - Akko(github.com/AkkoS2): Por ter testado as funcionalidades em Gameplay.
+
+## Conclusão
+
+todo
 
 ## References
 
