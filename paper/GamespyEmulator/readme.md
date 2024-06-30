@@ -1,4 +1,4 @@
-# Fazendo o trabalho das empresas de jogos e reescrevendo totalmente o suporte da GameSpy 2000 a 2004 usando engenharia reversa em jogos da EA e Bungie e dando bypass nos processos que isso poderia acarretar
+# Reescrevendo totalmente o suporte da GameSpy 2000 a 2004 usando engenharia reversa em jogos da EA Games e Bungie
 
 Author: João Vitor (@Keowu) - Security Researcher
 
@@ -12,7 +12,7 @@ Este artigo visa documentar e também apresentar meus passos durante os estágio
 1. [Introdução](#introdução)
 2. [Uma leve motivação](#uma-leve-motivação)
 3. [GameSpy da glória a Decadência](#gamespy-da-glória-a-decadência)
-4. [Battlefield 1942](#battlefield-1942)
+4. [Battlefield 1942 - GameSpy 2002](#battlefield-1942)
     1. [Analisando binário](#analisando-binário)
     2. [Revertendo pacotes](#revertendo-pacotes)
     3. [Revertendo o código fonte e implementação da Gamespy](#revertendo-o-código-fonte-e-implementação-da-gamespy)
@@ -39,7 +39,7 @@ Este artigo visa documentar e também apresentar meus passos durante os estágio
     3. [TeaDelKew](#teadelkew)
     4. [Error track com MiniDumps](#error-track-com-minidumps)
 7. [Bla, Bla Juridico](#bla-bla-juridico)
-8. [Revisores/Agradecimentos especiais](#revisoresagradecimentos-especiais)
+8. [Revisores, Testers e Agradecimentos especiais](#revisores-testers-e-agradecimentos-especiais)
 9. [Conclusão](#conclusão)
 10. [References](#references)
 
@@ -69,7 +69,7 @@ A GameSpy mostrava-se viavel para desenvolvedores, em uma época que manter um s
 
 Infelizmente, manter um serviço desse tamanho era extremamente caro, e pouco rentável, foi então que em Abril de 2014 a IGN decide encerrar os seus serviços, matando completamente diversos títulos clássicos de diversas franquias clássicas. na época a IGN ofereceu o código fonte completo e backend as empresas que usavam seus serviços para que pudessem hospedar por conta e lançarem patchs corrigindo os jogos. algumas empresas como a EA Games, apenas ignoraram esse fator e deixaram suas franquias clássicas morrerem. outras como o caso da Bungie hospedaram o backend recebido da IGN em algum lugar, por exemplo a Bungie mantem uma instância EC2 da Amazon rodando o serviço de server browsing para seus clássicos como o Halo Combat Evolved, além é claro de lançarem um patch aos seus jogos corrigindo este problema. porem isso são excessões.
 
-## Battlefield 1942
+## Battlefield 1942 - GameSpy 2002
 
 Battlefield 1942 foi o primeiro clássico da franquia Battlefield lançado pela EA Games em 2002. ele contava com uma implementação de uma das primeiras SDKs desenvolvidas pela Gamespy. esta versão já continha a criptografia proprietária de pacotes apelidada de ```GOA```(Gamespy Online Access) este algoritmo combinava chaves randômicas simetricas e compressão de dados além de rounds shufle com XOR. em volta do payload recebido do MasterServer. esses dados eram então parseados, verificados, obtidos mais informações sobre os servidores e então retornado em uma função callback fornecida pela própria EA Games ao inicializar a struct de configuração do GameSpySdk(rotina essa apelidada de ```SBListCallBackFn``` com base em informações obtidas em metadados de binários dessa época).
 
@@ -1303,14 +1303,20 @@ Outros detalhes necessários:
 
 Sendo assim tudo que foi necessario para construção deste artigo. desde a licença de softwares. como os próprios jogos são originais. e saliento que em nenhum momento uma versão jogavel sera disponibilizada(partes de arquivos de jogos bem como links para Websites de terceiros que contém devidos downloads não se enquadram em uma violação da lei da Seção 107 da Lei de Direitos Autorais de 1976 do Brasil), saliento que arquivos de patch ou melhoria também não se enquadram como uma violação de direito autoral, dessa forma o mesmo se aplica a todo código fonte e material gerado com esta pesquisa.
 
-## Revisores/Agradecimentos especiais
+## Revisores, Testers e Agradecimentos especiais
 
 - Anderson Leite(github.com/buzzer-re): Por ter revisado meu artigo e colaborado com sugestões e aprimoramentos.
 - Akko(github.com/AkkoS2): Por ter testado as funcionalidades em Gameplay.
 
 ## Conclusão
 
-todo
+Nossa conclusão é bem aberta, esse artigo com certeza rendeu bons momentos de aprendizado e satisfação pessoal em trazer títulos que foram de certa formas importantes para mim, e poder garantir que sejam jogados por próximas gerações. comunidades ou pessoas interessadas em recuperar o sentimento nostalgico é bem gratificante. espero que esse artigo possa ser utilizado inclusive gerar ainda mais melhorias ou facilitar alguma próxima iniciativa nesse sentido.
+
+[![SER GAMER 2... Zangado](https://img.youtube.com/vi/18DLBcMg_5k/0.jpg)](https://www.youtube.com/watch?v=18DLBcMg_5k)
+
+! Finalizo com uma referência que provavelmente apenas brasileiros vão conseguir compreender.
+
+Keowu \^-^
 
 ## References
 
