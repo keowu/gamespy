@@ -12,7 +12,7 @@ Este artigo visa documentar e também apresentar meus passos durante os estágio
 1. [Introdução](#introdução)
 2. [Uma leve motivação](#uma-leve-motivação)
 3. [GameSpy da glória a Decadência](#gamespy-da-glória-a-decadência)
-4. [Battlefield 1942 - GameSpy 2002](#battlefield-1942)
+4. [Battlefield 1942 - GameSpy 2002](#battlefield-1942---gamespy-2002)
     1. [Analisando binário](#analisando-binário)
     2. [Revertendo pacotes](#revertendo-pacotes)
     3. [Revertendo o código fonte e implementação da Gamespy](#revertendo-o-código-fonte-e-implementação-da-gamespy)
