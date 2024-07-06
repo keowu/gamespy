@@ -1,4 +1,4 @@
-# Rewriting completely the GameSpy support from 2000 to 2004 using reverse engineering on EA Games and Bungie games.
+# Rewriting completely the GameSpy support from 2000 to 2004 using Reverse Engineering on EA and Bungie Games.
 
 Author: João Vitor (@Keowu) - Security Researcher
 
