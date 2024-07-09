@@ -61,12 +61,12 @@ extern _memcpy: proc
 _new_get_socket_gamespy_buffer_gs2004_stub_bungie proc
 
 	; Acessando os fields da struct. ESI contém a base para a struct "clsGSCon".
-    mov edx, dword ptr [esi].gamespysocket.pGamespyBuffer
-    mov eax, dword ptr [esi].gamespysocket.socket
+    	mov edx, dword ptr [esi].gamespysocket.pGamespyBuffer
+    	mov eax, dword ptr [esi].gamespysocket.socket
          
 	push edi ; Salvando valor antigo de EDI (OLD actual_size)
 
-    mov edi, dword ptr [esi].gamespysocket.actual_size
+    	mov edi, dword ptr [esi].gamespysocket.actual_size
          
 	push 0          ; flags para serem utilizadas na chamada de recv
          
@@ -140,19 +140,19 @@ _new_goa_decrypt_buffer_gs2004_stub_bungie proc
 
 	sub  ebp, eax
     
-    lea edi, new_gamespy_cls_buffer
+    	lea edi, new_gamespy_cls_buffer
 
 	push ebp
 
-    lea eax, dword ptr [esi].config_gamespy.crypt_key
+    	lea eax, dword ptr [esi].config_gamespy.crypt_key
 
 	push edi
 
 	push eax
 
-    mov dword ptr [esi].config_gamespy.pstate, 1
+    	mov dword ptr [esi].config_gamespy.pstate, 1
     
-    push _g_goadecbody_gs2004_return
+    	push _g_goadecbody_gs2004_return
 	ret
 _new_goa_decrypt_buffer_gs2004_stub_bungie endp
 
