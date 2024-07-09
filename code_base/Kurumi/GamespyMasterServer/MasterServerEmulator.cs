@@ -1,4 +1,12 @@
-﻿using System;
+﻿/*
+	File: MasterServerEmulator.cs
+	Author: João Vitor(@Keowu)
+	Created: 09/03/2024
+	Last Update: 07/07/2024
+
+	Copyright (c) 2024. github.com/keowu/gamespy. All rights reserved.
+*/
+using System;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;

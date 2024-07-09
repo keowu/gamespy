@@ -1,4 +1,11 @@
+/*
+    File: Utils.hpp
+    Author: João Vitor(@Keowu)
+    Created: 17/03/2024
+    Last Update: 07/07/2024
 
+    Copyright (c) 2024. github.com/keowu/gamespy. All rights reserved.
+*/
 namespace Utils {
 
     class DiceEngineMemoryManagerSimple {

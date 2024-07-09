@@ -1,3 +1,11 @@
+;
+;    File: patchs.asm
+;    Author: João Vitor(@Keowu)
+;    Created: 19/05/2024
+;    Last Update: 07/07/2024
+;
+;    Copyright (c) 2024. github.com/keowu/gamespy. All rights reserved.
+;
 .model flat
 
 extern _g_gs2004Recv : DWORD
@@ -132,7 +140,7 @@ _new_goa_decrypt_buffer_gs2004_stub_bungie proc
 
 	sub  ebp, eax
     
-    	lea edi, new_gamespy_cls_buffer
+    lea edi, new_gamespy_cls_buffer
 
 	push ebp
 
@@ -144,7 +152,7 @@ _new_goa_decrypt_buffer_gs2004_stub_bungie proc
 
     mov dword ptr [esi].config_gamespy.pstate, 1
     
-    	push _g_goadecbody_gs2004_return
+    push _g_goadecbody_gs2004_return
 	ret
 _new_goa_decrypt_buffer_gs2004_stub_bungie endp
 

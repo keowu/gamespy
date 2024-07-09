@@ -1,8 +1,14 @@
 /*
-    (C) Keowu - 2024
+    File: KewUsermodeProcessMonitor.hh
+    Author: João Vitor(@Keowu)
+    Created: 28/02/2024
+    Last Update: 07/07/2024
 
-    PLEASE DISABLE THE OPTIMIZATION FOR COMPILE BECAUSE MICROSOFT COMPILE LIKE TRASH FOR IWbemObjectSink
+    Copyright (c) 2024. github.com/keowu/gamespy. All rights reserved.
 
+     -----------------------------------------------------------------------------------------------------------
+    |PLEASE DISABLE THE OPTIMIZATION FOR COMPILE BECAUSE MICROSOFT COMPILE LIKE TRASH FOR COM -> IWbemObjectSink|
+     -----------------------------------------------------------------------------------------------------------
 */
 #pragma once
 #include <iostream>

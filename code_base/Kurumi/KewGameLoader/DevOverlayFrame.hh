@@ -1,5 +1,10 @@
 /*
-    (C) Keowu - 2024
+    File: DevOverlayFrame.hh
+    Author: João Vitor(@Keowu)
+    Created: 28/02/2024
+    Last Update: 07/07/2024
+
+    Copyright (c) 2024. github.com/keowu/gamespy. All rights reserved.
 */
 #pragma once
 #include <iostream>

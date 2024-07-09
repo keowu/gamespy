@@ -27,7 +27,7 @@
     <ClInclude Include="Resource.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="KewGameLoader.h">
+    <ClInclude Include="KewGameLoader.hh">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="KewUsermodeProcessMonitor.hh">

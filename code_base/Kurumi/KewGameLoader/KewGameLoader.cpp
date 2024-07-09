@@ -1,8 +1,13 @@
 /*
-	(C) Keowu - 2024
+	File: KewGameLoader.cpp
+	Author: João Vitor(@Keowu)
+	Created: 28/02/2024
+	Last Update: 07/07/2024
+
+	Copyright (c) 2024. github.com/keowu/gamespy. All rights reserved.
 */
 #include "framework.h"
-#include "KewGameLoader.h"
+#include "KewGameLoader.hh"
 #include "KewUsermodeProcessMonitor.hh"
 #include "DevOverlayFrame.hh"
 #include "discord_developers_sdk/include/discord_register.h"
