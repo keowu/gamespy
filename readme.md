@@ -35,8 +35,8 @@ The following structure represents this project:
 
 To obtain complete information on how the code works, such as the process of deep reverse engineering. and understand the project as a whole, I recommend reading the following paper, available in English and Portuguese:
 
-[Rewriting completely the GameSpy support from 2000 to 2004 using Reverse Engineering on EA and Bungie Games](https://keowu.re/posts/Rewriting-completely-the-GameSpy-support-from-2000-to-2004-using-Reverse-Engineering-on-EA-and-Bungie-Games/#how-was-the-hash-generated-for-the-serial-key-is-it-the-same-one-used-on-the-servers-for-verification)
-[Reescrevendo totalmente o suporte da GameSpy de 2000 a 2004 usando engenharia reversa em jogos da EA Games e Bungie](https://keowu.re/posts/Reescrevendo-totalmente-o-suporte-da-GameSpy-de-2000-a-2004-usando-engenharia-reversa-em-jogos-da-EA-Games-e-Bungie/)
+- [Rewriting completely the GameSpy support from 2000 to 2004 using Reverse Engineering on EA and Bungie Games](https://keowu.re/posts/Rewriting-completely-the-GameSpy-support-from-2000-to-2004-using-Reverse-Engineering-on-EA-and-Bungie-Games/#how-was-the-hash-generated-for-the-serial-key-is-it-the-same-one-used-on-the-servers-for-verification)
+- [Reescrevendo totalmente o suporte da GameSpy de 2000 a 2004 usando engenharia reversa em jogos da EA Games e Bungie](https://keowu.re/posts/Reescrevendo-totalmente-o-suporte-da-GameSpy-de-2000-a-2004-usando-engenharia-reversa-em-jogos-da-EA-Games-e-Bungie/)
 
 #### Screenshots
 
