@@ -140,7 +140,7 @@ _new_goa_decrypt_buffer_gs2004_stub_bungie proc
 
 	sub  ebp, eax
     
-    	lea edi, new_gamespy_cls_buffer
+   	lea edi, new_gamespy_cls_buffer
 
 	push ebp
 

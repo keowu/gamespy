@@ -164,13 +164,13 @@ auto CALLBACK WindowProc(
 	*/
 	DiscordRichPresence discordPresence;
 	memset(&discordPresence, 0, sizeof(discordPresence));
-	discordPresence.state = "CAPCOM Purojekuto KAI - DEV ROOM";
-	discordPresence.details = "Playing as Anticheat Developer";
+	discordPresence.state = "Playing with Gamespy Emulator Loader";
+	discordPresence.details = "www.github.com/keowu/gamespy";
 	discordPresence.startTimestamp = timePlayingRPC;
-	discordPresence.largeImageKey = "bigicon";
-	discordPresence.largeImageText = "Purojekuto KAI";
+	discordPresence.largeImageKey = "intro";
+	discordPresence.largeImageText = "Gamespy Emulator";
 	discordPresence.smallImageKey = "icon_pequeno";
-	discordPresence.smallImageText = "Purojekuto KAI";
+	discordPresence.smallImageText = "KewGameLoader v1.2";
 	Discord_UpdatePresence(&discordPresence);
 
 
